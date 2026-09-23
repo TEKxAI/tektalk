@@ -5,6 +5,7 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import org.bouncycastle.crypto.engines.AESEngine
 import org.bouncycastle.crypto.params.KeyParameter
+import kotlin.experimental.xor
 
 data class MtMessage(val salt:Long,val sessionId:Long,val messageId:Long,val sequenceNo:Int,val body:ByteArray)
 object MTProto2 {
