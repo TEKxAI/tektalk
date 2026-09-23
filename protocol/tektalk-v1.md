@@ -1,13 +1,13 @@
-# ZChat Realtime Protocol v1
+# TEKtalk Realtime Protocol v1
 
-ZChat v1 is transport-independent and MTProto-inspired, but not Telegram-compatible. Identity and session bootstrap use HTTPS. Realtime frames use secure WebSocket (`wss`) initially; QUIC can carry identical frames later.
+TEKtalk v1 is transport-independent and MTProto-inspired, but not Telegram-compatible. Identity and session bootstrap use HTTPS. Realtime frames use secure WebSocket (`wss`) initially; QUIC can carry identical frames later.
 
 ## Handshake
 
 1. Client authenticates through HTTPS and receives an access token.
 2. Client posts the token to `/v1/realtime/bootstrap` and receives a one-use ticket plus the server ephemeral X25519 public key.
 3. Client opens `wss://host/v1/realtime/connect?ticket=...` and sends its 32-byte ephemeral X25519 public key as the first binary WebSocket message.
-4. Both sides calculate X25519 shared secret and derive a 32-byte session key using HKDF-SHA256, salt `zchat-v1`, info `realtime-session`.
+4. Both sides calculate X25519 shared secret and derive a 32-byte session key using HKDF-SHA256, salt `tektalk-v1`, info `realtime-session`.
 5. Every subsequent WebSocket message is exactly one encrypted frame. Tickets expire after 60 seconds and are consumed once.
 
 TLS authenticates the bootstrap server; the in-band handshake adds session keys and protocol-level replay protection. Production clients should apply the organization's certificate pinning and key-transparency policy.
@@ -40,4 +40,3 @@ Payloads are UTF-8 JSON in this reference slice so native apps can inspect them 
 - Snowflake-like `server_message_id` determines order within a conversation.
 - ACK means durably committed, not read by the recipient.
 - Session survives network reconnect; transport does not define identity.
-

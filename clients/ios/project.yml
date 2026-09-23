@@ -1,13 +1,12 @@
-name: ZChat
-options: {bundleIdPrefix: vn.zchat, deploymentTarget: {iOS: "16.0"}}
+name: TEKtalk
+options: {bundleIdPrefix: vn.tektalk, deploymentTarget: {iOS: "16.0"}}
 targets:
-  ZChat:
+  TEKtalk:
     type: application
     platform: iOS
-    sources: [ZChat]
+    sources: [TEKtalk]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: vn.zchat.ios
+        PRODUCT_BUNDLE_IDENTIFIER: vn.tektalk.ios
         SWIFT_VERSION: "5.10"
         INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: true
-

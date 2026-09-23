@@ -1,12 +1,12 @@
 import Foundation
 import CryptoKit
-struct ZSessionKeys { let privateKey: Curve25519.KeyAgreement.PrivateKey; let publicKey: Data; let symmetricKey: SymmetricKey }
-enum ZProtocol {
-    static func derive(serverPublic: Data) throws -> ZSessionKeys {
+struct TEKSessionKeys { let privateKey: Curve25519.KeyAgreement.PrivateKey; let publicKey: Data; let symmetricKey: SymmetricKey }
+enum TEKProtocol {
+    static func derive(serverPublic: Data) throws -> TEKSessionKeys {
         let privateKey=Curve25519.KeyAgreement.PrivateKey();let server=try Curve25519.KeyAgreement.PublicKey(rawRepresentation:serverPublic)
         let shared=try privateKey.sharedSecretFromKeyAgreement(with:server)
-        let key=shared.hkdfDerivedSymmetricKey(using:SHA256.self,salt:Data("zchat-v1".utf8),sharedInfo:Data("realtime-session".utf8),outputByteCount:32)
-        return ZSessionKeys(privateKey:privateKey,publicKey:privateKey.publicKey.rawRepresentation,symmetricKey:key)
+        let key=shared.hkdfDerivedSymmetricKey(using:SHA256.self,salt:Data("tektalk-v1".utf8),sharedInfo:Data("realtime-session".utf8),outputByteCount:32)
+        return TEKSessionKeys(privateKey:privateKey,publicKey:privateKey.publicKey.rawRepresentation,symmetricKey:key)
     }
     static func encrypt(key:SymmetricKey,kind:UInt8,session:UInt64,message:UInt64,sequence:UInt64,payload:Data)throws->Data{
         var header=Data([1,kind,0,0]);header.append(session.bigEndianData);header.append(message.bigEndianData);header.append(sequence.bigEndianData);header.append(UInt32(payload.count).bigEndianData)
@@ -16,4 +16,3 @@ enum ZProtocol {
     }
 }
 private extension FixedWidthInteger { var bigEndianData:Data { withUnsafeBytes(of:self.bigEndian){Data($0)} } }
-

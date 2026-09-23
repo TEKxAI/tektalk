@@ -5,4 +5,3 @@ struct Tokens: Codable { let access_token, refresh_token: String; let user_id, d
 struct LoginResponse: Codable { let status: String; let tokens: Tokens?; let challenge_id: UUID?; let question: String? }
 struct BootstrapRequest: Codable { let access_token: String }
 struct Bootstrap: Codable { let ticket, server_public_key: String; let expires_in_seconds, protocol_version: Int }
-

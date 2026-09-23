@@ -12,4 +12,3 @@ final class APIClient {
     func login(phone:String,password:String,deviceId:UUID?) async throws -> LoginResponse { try await post("v1/auth/login",body:LoginRequest(phone:phone,password:password,device_id:deviceId,device_name:UIDevice.current.name)) }
 }
 import UIKit
-

@@ -1,4 +1,4 @@
-package vn.zchat
+package vn.tektalk
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import okhttp3.*

@@ -1,8 +1,8 @@
-# Zalo-scale Chat Reference Platform
+# TEKtalk Chat Reference Platform
 
 Production-oriented reference skeleton for a Vietnamese mobile chat system with native iOS and Android clients, a Rust edge/API service, an MTProto-inspired encrypted binary realtime protocol, PostgreSQL identity state, ScyllaDB message history, Redis ephemeral state, and Kafka-compatible events.
 
-This is a reference implementation, not the production Zalo source code and not wire-compatible with Telegram. The protocol deliberately borrows MTProto's separation of logical sessions from physical connections, compact binary envelopes, monotonic message identifiers, acknowledgements, replay protection, and transport independence.
+This is an independent educational reference implementation for TEK, not the production source code of any commercial messaging platform and not wire-compatible with Telegram. The protocol deliberately borrows MTProto's separation of logical sessions from physical connections, compact binary envelopes, monotonic message identifiers, acknowledgements, replay protection, and transport independence.
 
 ## Included vertical slice
 
@@ -59,4 +59,3 @@ The sample protocol uses X25519 + HKDF-SHA256 + ChaCha20-Poly1305 after an HTTPS
 - `clients/ios/` Swift client core and SwiftUI sample
 - `infra/` database, Kubernetes, and observability configuration
 - `docs/` architecture, authentication flows, runbook, and threat model
-
