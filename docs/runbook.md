@@ -1,5 +1,7 @@
 # Operations runbook
 
+This runbook covers operational reasoning and incident response. Use `getting-started.md` for local setup and `deployment.md` for executable deployment instructions.
+
 ## Deploy
 
 Build an immutable image, scan it, deploy to one canary cell, verify auth success rate, WebSocket handshake rate, send/ACK latency and database errors, then expand by cell. Database migrations must be backward compatible and applied before code that depends on them.

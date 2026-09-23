@@ -1,6 +1,6 @@
-# TEKtalk Chat Reference Platform
+# TEKtalk Chat Learning Template
 
-Production-oriented reference skeleton for a Vietnamese mobile chat system with native iOS and Android clients, a Rust edge/API service, an MTProto 2.0 established-session encrypted envelope, PostgreSQL identity state, ScyllaDB message history, Redis ephemeral state, and Kafka-compatible events.
+Reusable educational template for studying a mobile chat system with native iOS and Android clients, a Rust edge/API service, an MTProto 2.0 established-session encrypted envelope, PostgreSQL identity state, Redis ephemeral state, and extension points for ScyllaDB and Kafka-compatible events.
 
 This is an independent educational reference implementation for TEK, not the production source code of any commercial messaging platform. Its realtime codec implements the MTProto 2.0 established-session envelope; full Telegram client interoperability still requires the standard RSA/DH bootstrap, service-message behavior, and Telegram TL schemas.
 
@@ -48,6 +48,12 @@ cargo run -p chat-server
 Health check: `curl http://localhost:8080/healthz`
 
 Run tests with `cargo test --workspace`. Android opens from `clients/android` in Android Studio. Add `clients/ios` files to an Xcode iOS App target and set `API_BASE_URL` and `REALTIME_URL` in its Info.plist.
+
+For the complete learning setup, client instructions, verification commands, release flow, and Kubernetes deployment, see:
+
+- `docs/getting-started.md`
+- `docs/deployment.md`
+- `docs/runbook.md`
 
 ## Security boundary
 
