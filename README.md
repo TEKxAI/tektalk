@@ -2,9 +2,9 @@
 
 Reusable educational template for studying a mobile chat system with native iOS and Android clients, a Rust edge/API service, an MTProto 2.0 established-session encrypted envelope, PostgreSQL identity state, Redis ephemeral state, and extension points for ScyllaDB and Kafka-compatible events.
 
-This is an independent educational reference implementation for TEK, not the production source code of any commercial messaging platform. Its realtime codec implements the MTProto 2.0 established-session envelope; full Telegram client interoperability still requires the standard RSA/DH bootstrap, service-message behavior, and Telegram TL schemas.
+This is an independent educational reference implementation for TEK, not the production source code of any commercial messaging platform. It deliberately selects high-value Telegram engineering patterns without requiring official Telegram clients or the full Telegram API to interoperate with TEKtalk.
 
-The remaining Telegram MTProto 2.0 compatibility work is tracked in `docs/mtproto-compatibility.md`. The AES-IGE/KDF codec is the active realtime encryption path and is covered by server tests and native client builds.
+The selected protocol, client, server, sync, delivery and media patterns are tracked in `docs/telegram-engineering.md`. The AES-IGE/KDF codec is the active realtime encryption path and is covered by server tests and native client builds.
 
 ## Included vertical slice
 
@@ -57,7 +57,7 @@ For the complete learning setup, client instructions, verification commands, rel
 
 ## Security boundary
 
-The realtime protocol now uses the MTProto 2.0 established-session envelope, SHA-256 KDF and AES-256-IGE. Production rollout still requires external cryptographic review, the standard RSA/DH authorization-key exchange, device attestation policy, HSM-backed server keys, certificate pinning policy, abuse controls, and a formal threat model.
+The realtime protocol uses the MTProto 2.0 established-session envelope, SHA-256 KDF and AES-256-IGE. Any public deployment still requires external cryptographic review of the selected auth-key bootstrap, device policy, protected server keys, certificate policy, abuse controls, and a formal threat model.
 
 ## Repository map
 

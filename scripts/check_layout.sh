@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-required='Cargo.toml server/src/main.rs protocol/mtproto-2.0.md clients/android/app/src/main/java/vn/tektalk/Protocol.kt clients/ios/TEKtalk/TEKProtocol.swift infra/postgres/001_init.sql infra/scylla/schema.cql infra/k8s/base.yaml'
+required='Cargo.toml server/src/main.rs protocol/mtproto-2.0.md docs/telegram-engineering.md docs/getting-started.md docs/deployment.md clients/android/app/src/main/java/vn/tektalk/Protocol.kt clients/ios/TEKtalk/TEKProtocol.swift infra/postgres/001_init.sql infra/scylla/schema.cql infra/k8s/base.yaml'
 for file in $required; do test -s "$root/$file" || { echo "missing: $file" >&2; exit 1; }; done
 grep -q 'tektalk-mtproto-bootstrap-v1' "$root/server/src/realtime.rs"
 grep -q 'object MTProto2' "$root/clients/android/app/src/main/java/vn/tektalk/Protocol.kt"
