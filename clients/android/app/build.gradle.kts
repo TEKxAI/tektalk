@@ -1,4 +1,4 @@
-plugins { id("com.android.application"); id("org.jetbrains.kotlin.android"); id("org.jetbrains.kotlin.plugin.serialization") }
+plugins { id("com.android.application"); id("org.jetbrains.kotlin.android"); id("org.jetbrains.kotlin.plugin.serialization"); id("org.jetbrains.kotlin.plugin.compose") }
 android { namespace="vn.tektalk"; compileSdk=35
     defaultConfig { applicationId="vn.tektalk"; minSdk=28; targetSdk=35; versionCode=1; versionName="0.1"; buildConfigField("String","API_BASE_URL","\"http://10.0.2.2:8080\"") }
     buildFeatures { compose=true; buildConfig=true }

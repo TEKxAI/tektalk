@@ -1,18 +1,11 @@
 import Foundation
 import CryptoKit
-struct TEKSessionKeys { let privateKey: Curve25519.KeyAgreement.PrivateKey; let publicKey: Data; let symmetricKey: SymmetricKey }
-enum TEKProtocol {
-    static func derive(serverPublic: Data) throws -> TEKSessionKeys {
-        let privateKey=Curve25519.KeyAgreement.PrivateKey();let server=try Curve25519.KeyAgreement.PublicKey(rawRepresentation:serverPublic)
-        let shared=try privateKey.sharedSecretFromKeyAgreement(with:server)
-        let key=shared.hkdfDerivedSymmetricKey(using:SHA256.self,salt:Data("tektalk-v1".utf8),sharedInfo:Data("realtime-session".utf8),outputByteCount:32)
-        return TEKSessionKeys(privateKey:privateKey,publicKey:privateKey.publicKey.rawRepresentation,symmetricKey:key)
-    }
-    static func encrypt(key:SymmetricKey,kind:UInt8,session:UInt64,message:UInt64,sequence:UInt64,payload:Data)throws->Data{
-        var header=Data([1,kind,0,0]);header.append(session.bigEndianData);header.append(message.bigEndianData);header.append(sequence.bigEndianData);header.append(UInt32(payload.count).bigEndianData)
-        var nonceData=Data();nonceData.append(sequence.bigEndianData);nonceData.append(UInt32(truncatingIfNeeded:message).bigEndianData)
-        let box=try ChaChaPoly.seal(payload,using:key,nonce:try ChaChaPoly.Nonce(data:nonceData),authenticating:header)
-        return header+box.ciphertext+box.tag
+enum MTProto2KDF {
+    static func authKeyId(_ key: Data) -> Data { precondition(key.count == 256); return Data(Insecure.SHA1.hash(data: key)).suffix(8) }
+    static func keyAndIv(authKey: Data, messageKey: Data, clientToServer: Bool) -> (Data, Data) {
+        let x = clientToServer ? 0 : 8
+        let a = Data(SHA256.hash(data: messageKey + authKey[x..<(x + 36)]))
+        let b = Data(SHA256.hash(data: authKey[(40 + x)..<(76 + x)] + messageKey))
+        return (Data(a[0..<8] + b[8..<24] + a[24..<32]), Data(b[0..<8] + a[8..<24] + b[24..<32]))
     }
 }
-private extension FixedWidthInteger { var bigEndianData:Data { withUnsafeBytes(of:self.bigEndian){Data($0)} } }

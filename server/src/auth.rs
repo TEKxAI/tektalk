@@ -71,7 +71,7 @@ pub async fn reset_password(State(s): State<AppState>, Json(r): Json<ResetPasswo
     let mut tx=s.db.begin().await?;
     let ok=sqlx::query("UPDATE password_reset_otps SET used_at=now() WHERE id=(SELECT id FROM password_reset_otps WHERE phone_e164=$1 AND otp_digest=$2 AND used_at IS NULL AND expires_at>now() AND attempts<5 ORDER BY created_at DESC LIMIT 1) AND used_at IS NULL").bind(&phone).bind(digest).execute(&mut *tx).await?.rows_affected()==1;
     if !ok { return Err(AppError::Unauthorized); }
-    sqlx::query("UPDATE users SET password_hash=$1,password_changed_at=now() WHERE phone_e164=$2").bind(pass).bind(phone).execute(&mut *tx).await?;
+    sqlx::query("UPDATE users SET password_hash=$1,password_changed_at=now() WHERE phone_e164=$2").bind(pass).bind(&phone).execute(&mut *tx).await?;
     sqlx::query("UPDATE refresh_tokens SET revoked_at=now() WHERE user_id=(SELECT id FROM users WHERE phone_e164=$1)").bind(&phone).execute(&mut *tx).await?;
     tx.commit().await?; Ok(Json(serde_json::json!({"status":"changed"})))
 }

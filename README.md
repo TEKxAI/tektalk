@@ -51,7 +51,7 @@ Run tests with `cargo test --workspace`. Android opens from `clients/android` in
 
 ## Security boundary
 
-The sample protocol uses X25519 + HKDF-SHA256 + ChaCha20-Poly1305 after an HTTPS-authenticated bootstrap. Production rollout still requires external cryptographic review, device attestation policy, key rotation, HSM-backed server keys, certificate pinning policy, abuse controls, and a formal threat model. Never invent a new cipher or deploy this skeleton as-is for sensitive communications.
+The realtime protocol now uses the MTProto 2.0 established-session envelope, SHA-256 KDF and AES-256-IGE. Production rollout still requires external cryptographic review, the standard RSA/DH authorization-key exchange, device attestation policy, HSM-backed server keys, certificate pinning policy, abuse controls, and a formal threat model.
 
 ## Repository map
 

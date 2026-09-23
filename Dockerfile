@@ -2,6 +2,7 @@ FROM rust:1.98-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.toml
 COPY server server
+COPY infra infra
 RUN cargo build --release -p chat-server
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*

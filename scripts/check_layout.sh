@@ -7,4 +7,5 @@ grep -q 'tektalk-v1' "$root/server/src/realtime.rs"
 grep -q 'tektalk-v1' "$root/clients/android/app/src/main/java/vn/tektalk/Protocol.kt"
 grep -q 'tektalk-v1' "$root/clients/ios/TEKtalk/TEKProtocol.swift"
 grep -q 'AES-256-IGE' "$root/server/src/mtproto.rs"
+if grep -Rqi 'chacha20' "$root/server" "$root/clients"; then echo 'ChaCha20 reference found' >&2; exit 1; fi
 echo "layout and cross-client protocol constants: ok"

@@ -25,7 +25,7 @@ All integers are unsigned, network byte order.
 | 12 | 8 | message ID |
 | 20 | 8 | monotonically increasing sequence |
 | 28 | 4 | plaintext payload length |
-| 32 | N+16 | ChaCha20-Poly1305 ciphertext and tag |
+| 24 | N | MTProto 2.0 AES-256-IGE encrypted internal header, payload and authenticated random padding |
 
 The 32-byte header is authenticated additional data. Nonce is `sequence[8] || low32(message_id)[4]`; a key must never reuse a `(sequence,message_id)` pair. Receivers close the connection when sequence is not strictly increasing.
 

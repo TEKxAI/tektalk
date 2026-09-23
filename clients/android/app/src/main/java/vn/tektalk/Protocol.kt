@@ -1,20 +1,16 @@
 package vn.tektalk
-import org.bouncycastle.crypto.agreement.X25519Agreement
-import org.bouncycastle.crypto.generators.X25519KeyPairGenerator
-import org.bouncycastle.crypto.params.*
-import org.bouncycastle.crypto.digests.SHA256Digest
-import org.bouncycastle.crypto.macs.HMac
-import org.bouncycastle.crypto.params.KeyParameter
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
+import java.security.MessageDigest
+import java.security.SecureRandom
+import org.bouncycastle.crypto.engines.AESEngine
+import org.bouncycastle.crypto.params.KeyParameter
 
-data class SessionKeys(val publicKey:ByteArray,val key:ByteArray)
-object TEKProtocol{
- fun derive(serverPublic:ByteArray):SessionKeys{val gen=X25519KeyPairGenerator();gen.init(X25519KeyGenerationParameters(java.security.SecureRandom()));val pair=gen.generateKeyPair();val priv=pair.private as X25519PrivateKeyParameters;val pub=pair.public as X25519PublicKeyParameters;val agree=X25519Agreement();agree.init(priv);val shared=ByteArray(32);agree.calculateAgreement(X25519PublicKeyParameters(serverPublic,0),shared,0);return SessionKeys(pub.encoded,hkdf(shared,"tektalk-v1".toByteArray(),"realtime-session".toByteArray()))}
- fun encrypt(key:ByteArray,kind:Int,session:Long,message:Long,sequence:Long,payload:ByteArray):ByteArray{val h=ByteBuffer.allocate(32).order(ByteOrder.BIG_ENDIAN).put(1).put(kind.toByte()).putShort(0).putLong(session).putLong(message).putLong(sequence).putInt(payload.size).array();val c=Cipher.getInstance("ChaCha20-Poly1305");c.init(Cipher.ENCRYPT_MODE,SecretKeySpec(key,"ChaCha20"),IvParameterSpec(nonce(sequence,message)));c.updateAAD(h);return h+c.doFinal(payload)}
- private fun nonce(seq:Long,msg:Long)=ByteBuffer.allocate(12).order(ByteOrder.BIG_ENDIAN).putLong(seq).putInt(msg.toInt()).array()
- private fun hkdf(ikm:ByteArray,salt:ByteArray,info:ByteArray):ByteArray{fun mac(k:ByteArray,d:ByteArray):ByteArray{val h=HMac(SHA256Digest());h.init(KeyParameter(k));h.update(d,0,d.size);return ByteArray(32).also{h.doFinal(it,0)}};val prk=mac(salt,ikm);return mac(prk,info+byteArrayOf(1))}
+data class MtMessage(val salt:Long,val sessionId:Long,val messageId:Long,val sequenceNo:Int,val body:ByteArray)
+object MTProto2 {
+ fun authKeyId(a:ByteArray)=MessageDigest.getInstance("SHA-1").digest(a).copyOfRange(12,20)
+ fun encrypt(a:ByteArray,m:MtMessage,c2s:Boolean=true):ByteArray{require(a.size==256);val b=ByteBuffer.allocate(32+m.body.size+32).order(ByteOrder.LITTLE_ENDIAN).putLong(m.salt).putLong(m.sessionId).putLong(m.messageId).putInt(m.sequenceNo).putInt(m.body.size).put(m.body);var p=16-b.position()%16;if(p<12)p+=16;val plain=ByteArray(b.position()+p);b.flip();b.get(plain,0,b.remaining());val random=ByteArray(p);SecureRandom().nextBytes(random);random.copyInto(plain,plain.size-p);val x=if(c2s)0 else 8;val mk=sha(a.copyOfRange(88+x,120+x)+plain).copyOfRange(8,24);val(k,iv)=derive(a,mk,x);return authKeyId(a)+mk+ige(plain,k,iv,true)}
+ private fun derive(a:ByteArray,m:ByteArray,x:Int):Pair<ByteArray,ByteArray>{val sa=sha(m+a.copyOfRange(x,x+36));val sb=sha(a.copyOfRange(40+x,76+x)+m);return Pair(sa.copyOfRange(0,8)+sb.copyOfRange(8,24)+sa.copyOfRange(24,32),sb.copyOfRange(0,8)+sa.copyOfRange(8,24)+sb.copyOfRange(24,32))}
+ private fun ige(input:ByteArray,key:ByteArray,iv:ByteArray,enc:Boolean):ByteArray{val aes=AESEngine.newInstance();aes.init(enc,KeyParameter(key));var c=iv.copyOfRange(0,16);var p=iv.copyOfRange(16,32);val out=ByteArray(input.size);for(o in input.indices step 16){val block=input.copyOfRange(o,o+16);val mixed=ByteArray(16){i->block[i] xor if(enc)c[i] else p[i]};val crypt=ByteArray(16);aes.processBlock(mixed,0,crypt,0);val result=ByteArray(16){i->crypt[i] xor if(enc)p[i] else c[i]};result.copyInto(out,o);if(enc){c=result;p=block}else{p=result;c=block}};return out}
+ private fun sha(v:ByteArray)=MessageDigest.getInstance("SHA-256").digest(v)
 }
