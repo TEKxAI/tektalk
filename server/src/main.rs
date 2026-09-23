@@ -1,4 +1,4 @@
-mod auth; mod config; mod crypto; mod error; mod protocol; mod realtime; mod state; mod token;
+mod auth; mod config; mod crypto; mod error; mod mtproto; mod protocol; mod realtime; mod state; mod token;
 use axum::{routing::{get,post},Router};
 use dashmap::DashMap;
 use sqlx::postgres::PgPoolOptions;

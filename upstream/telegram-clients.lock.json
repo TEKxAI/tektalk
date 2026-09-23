@@ -1,0 +1,16 @@
+{
+  "android": {
+    "repository": "https://github.com/DrKLO/Telegram.git",
+    "branch": "master",
+    "license": "GPL-2.0",
+    "import_mode": "separate-fork"
+  },
+  "ios": {
+    "repository": "https://github.com/TelegramMessenger/Telegram-iOS.git",
+    "branch": "master",
+    "license": "upstream-GPL",
+    "import_mode": "separate-fork"
+  },
+  "telegram_api_layer": 225,
+  "note": "Pin immutable commit SHAs before the first reproducible client build. Do not build from moving branches in release CI."
+}

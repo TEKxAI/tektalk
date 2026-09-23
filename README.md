@@ -4,6 +4,8 @@ Production-oriented reference skeleton for a Vietnamese mobile chat system with 
 
 This is an independent educational reference implementation for TEK, not the production source code of any commercial messaging platform and not wire-compatible with Telegram. The protocol deliberately borrows MTProto's separation of logical sessions from physical connections, compact binary envelopes, monotonic message identifiers, acknowledgements, replay protection, and transport independence.
 
+An incremental Telegram MTProto 2.0 compatibility program is now tracked in `docs/mtproto-compatibility.md`. The established-session AES-IGE/KDF codec exists behind tests; it is not the default transport until authorization-key negotiation and both native client adapters pass conformance gates.
+
 ## Included vertical slice
 
 - Register by phone number, set password, and store a security question/answer
