@@ -18,7 +18,7 @@ Target: Telegram MTProto 2.0 established-session wire compatibility and, increme
 | Telegram TL layer 225 | Pending; vertical slice starts with auth/users/messages |
 | Android/iOS Telegram forks | Pending upstream import and GPL compliance review |
 
-The deployable path remains on the existing TEKtalk transport until the MTProto client adapters pass bidirectional conformance tests. This prevents a partially migrated protocol from breaking production.
+The deployable path uses the MTProto 2.0 established-session envelope. Its temporary X25519 bootstrap and JSON application body remain isolated compatibility gaps until the standard RSA/DH exchange and Telegram TL adapters pass bidirectional conformance tests.
 
 ## Client upstream and license boundary
 
@@ -35,4 +35,3 @@ The deployable path remains on the existing TEKtalk transport until the MTProto 
 4. Android fork connects to a TEKtalk test DC and completes TEK auth plus 1:1 chat.
 5. iOS fork passes the same black-box suite.
 6. Only then enable MTProto by default in production.
-

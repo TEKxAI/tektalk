@@ -1,10 +1,10 @@
 # TEKtalk Chat Reference Platform
 
-Production-oriented reference skeleton for a Vietnamese mobile chat system with native iOS and Android clients, a Rust edge/API service, an MTProto-inspired encrypted binary realtime protocol, PostgreSQL identity state, ScyllaDB message history, Redis ephemeral state, and Kafka-compatible events.
+Production-oriented reference skeleton for a Vietnamese mobile chat system with native iOS and Android clients, a Rust edge/API service, an MTProto 2.0 established-session encrypted envelope, PostgreSQL identity state, ScyllaDB message history, Redis ephemeral state, and Kafka-compatible events.
 
-This is an independent educational reference implementation for TEK, not the production source code of any commercial messaging platform and not wire-compatible with Telegram. The protocol deliberately borrows MTProto's separation of logical sessions from physical connections, compact binary envelopes, monotonic message identifiers, acknowledgements, replay protection, and transport independence.
+This is an independent educational reference implementation for TEK, not the production source code of any commercial messaging platform. Its realtime codec implements the MTProto 2.0 established-session envelope; full Telegram client interoperability still requires the standard RSA/DH bootstrap, service-message behavior, and Telegram TL schemas.
 
-An incremental Telegram MTProto 2.0 compatibility program is now tracked in `docs/mtproto-compatibility.md`. The established-session AES-IGE/KDF codec exists behind tests; it is not the default transport until authorization-key negotiation and both native client adapters pass conformance gates.
+The remaining Telegram MTProto 2.0 compatibility work is tracked in `docs/mtproto-compatibility.md`. The AES-IGE/KDF codec is the active realtime encryption path and is covered by server tests and native client builds.
 
 ## Included vertical slice
 
@@ -56,7 +56,7 @@ The realtime protocol now uses the MTProto 2.0 established-session envelope, SHA
 ## Repository map
 
 - `server/` Rust HTTPS and realtime service
-- `protocol/` normative wire specification and test vector
+- `protocol/mtproto-2.0.md` normative wire specification
 - `clients/android/` Kotlin client core and Compose sample
 - `clients/ios/` Swift client core and SwiftUI sample
 - `infra/` database, Kubernetes, and observability configuration
