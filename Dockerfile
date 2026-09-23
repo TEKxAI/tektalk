@@ -1,4 +1,4 @@
-FROM rust:1.82-bookworm AS build
+FROM rust:1.98-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.toml
 COPY server server
@@ -9,4 +9,3 @@ COPY --from=build /src/target/release/chat-server /usr/local/bin/chat-server
 USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["chat-server"]
-
