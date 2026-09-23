@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: chat
+      POSTGRES_PASSWORD: chat
+      POSTGRES_DB: chat
+    ports: ["5432:5432"]
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./infra/postgres/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chat"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: ["redis-data:/data"]
+  scylla:
+    image: scylladb/scylla:6.2
+    command: ["--smp", "1", "--memory", "750M", "--overprovisioned", "1"]
+    ports: ["9042:9042"]
+    volumes: ["scylla-data:/var/lib/scylla"]
+  redpanda:
+    image: redpandadata/redpanda:v24.2.12
+    command: ["redpanda", "start", "--overprovisioned", "--smp", "1", "--memory", "512M", "--reserve-memory", "0M", "--node-id", "0", "--kafka-addr", "PLAINTEXT://0.0.0.0:9092,OUTSIDE://0.0.0.0:19092", "--advertise-kafka-addr", "PLAINTEXT://redpanda:9092,OUTSIDE://localhost:19092"]
+    ports: ["19092:19092", "9644:9644"]
+    volumes: ["redpanda-data:/var/lib/redpanda/data"]
+  server:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://chat:chat@postgres:5432/chat
+      REDIS_URL: redis://redis:6379
+      SCYLLA_NODES: scylla:9042
+      KAFKA_BROKERS: redpanda:9092
+    ports: ["8080:8080"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+      scylla: {condition: service_started}
+      redpanda: {condition: service_started}
+volumes:
+  pg-data:
+  redis-data:
+  scylla-data:
+  redpanda-data:
+

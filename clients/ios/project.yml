@@ -1,0 +1,13 @@
+name: ZChat
+options: {bundleIdPrefix: vn.zchat, deploymentTarget: {iOS: "16.0"}}
+targets:
+  ZChat:
+    type: application
+    platform: iOS
+    sources: [ZChat]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: vn.zchat.ios
+        SWIFT_VERSION: "5.10"
+        INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: true
+

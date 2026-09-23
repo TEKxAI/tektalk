@@ -1,0 +1,9 @@
+.env
+target/
+.gradle/
+**/build/
+DerivedData/
+*.xcuserstate
+.idea/
+.DS_Store
+
