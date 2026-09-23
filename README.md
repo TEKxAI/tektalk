@@ -37,15 +37,15 @@ The runnable Rust service keeps edge, identity, and realtime domains in one depl
 
 ## Quick start
 
-Requirements: Docker Compose v2 and Rust 1.82+.
+Requirements: Docker Desktop/Engine with Compose v2, OpenSSL and curl.
 
 ```bash
-cp .env.example .env
-docker compose up -d postgres redis scylla redpanda
-cargo run -p chat-server
+make local-up
 ```
 
-Health check: `curl http://localhost:8080/healthz`
+This generates local secrets in the ignored `.env`, builds and starts the complete stack, waits for every service to become healthy, and runs an API smoke test. Health check: `curl http://localhost:8080/healthz`.
+
+Use `make logs`, `make smoke`, and `make local-down`. `make local-reset` additionally deletes the local data volumes.
 
 Run tests with `cargo test --workspace`. Android opens from `clients/android` in Android Studio. Add `clients/ios` files to an Xcode iOS App target and set `API_BASE_URL` and `REALTIME_URL` in its Info.plist.
 

@@ -37,15 +37,13 @@ Use the first output for `JWT_SECRET` and the second for `OTP_HMAC_SECRET`. Keep
 
 ## 3. Run the complete backend
 
-The simplest path builds the Rust server and starts all local dependencies:
+The simplest path generates local secrets, builds the Rust server, starts all dependencies, waits for health checks, and registers a smoke-test account:
 
 ```bash
-docker compose up --build -d
-docker compose ps
-curl --fail http://localhost:8080/healthz
+make local-up
 ```
 
-Follow logs with `docker compose logs -f server`. Stop the stack with `docker compose down`. To also discard local database state, explicitly run `docker compose down --volumes`.
+Follow logs with `make logs`. Re-run verification with `make smoke`. Stop the stack with `make local-down`. To also discard local database state, explicitly run `make local-reset`.
 
 ## 4. Run the server from Rust
 

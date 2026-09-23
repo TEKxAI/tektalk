@@ -14,21 +14,42 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    restart: unless-stopped
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
     ports: ["6379:6379"]
     volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
   scylla:
     image: scylladb/scylla:6.2
     command: ["--smp", "1", "--memory", "750M", "--overprovisioned", "1"]
     ports: ["9042:9042"]
     volumes: ["scylla-data:/var/lib/scylla"]
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT key FROM system.local' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      start_period: 30s
+      retries: 30
+    restart: unless-stopped
   redpanda:
     image: redpandadata/redpanda:v24.2.12
     command: ["redpanda", "start", "--overprovisioned", "--smp", "1", "--memory", "512M", "--reserve-memory", "0M", "--node-id", "0", "--kafka-addr", "PLAINTEXT://0.0.0.0:9092,OUTSIDE://0.0.0.0:19092", "--advertise-kafka-addr", "PLAINTEXT://redpanda:9092,OUTSIDE://localhost:19092"]
     ports: ["19092:19092", "9644:9644"]
     volumes: ["redpanda-data:/var/lib/redpanda/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health --exit-when-healthy >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      start_period: 15s
+      retries: 20
+    restart: unless-stopped
   server:
     build: .
     env_file: .env
@@ -40,12 +61,12 @@ services:
     ports: ["8080:8080"]
     depends_on:
       postgres: {condition: service_healthy}
-      redis: {condition: service_started}
-      scylla: {condition: service_started}
-      redpanda: {condition: service_started}
+      redis: {condition: service_healthy}
+      scylla: {condition: service_healthy}
+      redpanda: {condition: service_healthy}
+    restart: unless-stopped
 volumes:
   pg-data:
   redis-data:
   scylla-data:
   redpanda-data:
-

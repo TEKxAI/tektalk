@@ -1,4 +1,4 @@
-.PHONY: dev test fmt lint infra-up infra-down
+.PHONY: dev test fmt lint infra-up infra-down local-up local-down local-reset smoke logs
 dev:
 	cargo run -p chat-server
 test:
@@ -11,3 +11,13 @@ infra-up:
 	docker compose up -d postgres redis scylla redpanda
 infra-down:
 	docker compose down
+local-up:
+	./scripts/local-up.sh
+local-down:
+	./scripts/local-down.sh
+local-reset:
+	./scripts/local-down.sh --volumes
+smoke:
+	./scripts/smoke-test.sh
+logs:
+	docker compose logs -f server

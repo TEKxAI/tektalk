@@ -26,6 +26,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate local deployment files
+        run: |
+          sh -n scripts/local-up.sh scripts/local-down.sh scripts/smoke-test.sh
+          cp .env.example .env
+          docker compose config --quiet
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with: {context: ., push: false, tags: tektalk-server:ci}
