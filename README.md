@@ -18,6 +18,7 @@ The selected protocol, client, server, sync, delivery and media patterns are tra
 - Native Kotlin/Android and Swift/iOS sample clients
 - PostgreSQL migrations, Scylla schema, Redis/Kafka integration points
 - Docker Compose local dependencies, Kubernetes manifests, OpenTelemetry hooks, and CI
+- Independent gRPC services for account, OTT chat, L0/L1/L2 sessions, and consent
 
 ## Architecture
 
@@ -33,7 +34,7 @@ flowchart TB
     C -. "async events" .-> K[(Kafka/Redpanda)]
 ```
 
-The runnable Rust service keeps edge, identity, and realtime domains in one deployable for the first vertical slice, but their ports and modules are separated. Scale them independently by extracting modules behind the same interfaces. See `docs/architecture.md` and `protocol/mtproto-2.0.md`.
+The original Rust edge remains available for the first vertical slice. Account, OTT chat, session management and consent management also run as independent gRPC processes and containers, providing an executable migration path to the target microservice architecture. See `docs/architecture.md` and `protocol/mtproto-2.0.md`.
 
 The target architecture uses domain-owned microservices with internal gRPC/Protobuf contracts, a native host with remotely delivered Valdi plugins, and a C++20 shared core for deterministic cross-platform logic. See `docs/target-architecture.md`, `services/README.md`, `contracts/README.md`, `core/README.md`, and `plugins/README.md`.
 
@@ -45,7 +46,7 @@ Requirements: Docker Desktop/Engine with Compose v2, OpenSSL and curl.
 make local-up
 ```
 
-This generates local secrets in the ignored `.env`, builds and starts the complete stack, waits for every service to become healthy, and runs an API smoke test. Health check: `curl http://localhost:8080/healthz`.
+This generates local secrets in the ignored `.env`, builds and starts the complete stack, waits for every service to become healthy, and runs an API smoke test. Health check: `curl http://localhost:8080/healthz`. Internal gRPC endpoints are exposed locally on ports 50051–50055 for learning and integration tests; they must not be internet-facing in production.
 
 Use `make logs`, `make smoke`, and `make local-down`. `make local-reset` additionally deletes the local data volumes.
 

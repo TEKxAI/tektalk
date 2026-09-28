@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package tektalk.v1;
+
+import "tektalk/v1/common.proto";
+
+service SessionManagementService {
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+  rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionResponse);
+  rpc ElevateSession(ElevateSessionRequest) returns (ElevateSessionResponse);
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+}
+
+enum AccessLevel {
+  ACCESS_LEVEL_UNSPECIFIED = 0;
+  ACCESS_LEVEL_L0_CORE_PLATFORM = 1;
+  ACCESS_LEVEL_L1_CORE_FEATURE = 2;
+  ACCESS_LEVEL_L2_BUSINESS_APPLICATION = 3;
+}
+
+message CreateSessionRequest {
+  RequestContext context = 1;
+  string account_id = 2;
+  string device_id = 3;
+  AccessLevel requested_level = 4;
+  string audience = 5;
+  repeated string requested_scopes = 6;
+}
+
+message CreateSessionResponse {
+  string session_id = 1;
+  string access_token = 2;
+  AccessLevel granted_level = 3;
+  repeated string granted_scopes = 4;
+  int64 expires_at_unix_ms = 5;
+}
+
+message ValidateSessionRequest {
+  RequestContext context = 1;
+  string access_token = 2;
+  AccessLevel required_level = 3;
+  repeated string required_scopes = 4;
+  string audience = 5;
+}
+
+message ValidateSessionResponse {
+  bool valid = 1;
+  string session_id = 2;
+  string account_id = 3;
+  AccessLevel granted_level = 4;
+  repeated string granted_scopes = 5;
+  string failure_reason = 6;
+}
+
+message ElevateSessionRequest {
+  RequestContext context = 1;
+  string session_id = 2;
+  AccessLevel target_level = 3;
+  repeated string requested_scopes = 4;
+  string security_proof = 5;
+}
+
+message ElevateSessionResponse {
+  string access_token = 1;
+  AccessLevel granted_level = 2;
+  repeated string granted_scopes = 3;
+  int64 expires_at_unix_ms = 4;
+}
+
+message RevokeSessionRequest {
+  RequestContext context = 1;
+  string session_id = 2;
+  string reason = 3;
+}
+
+message RevokeSessionResponse {
+  bool revoked = 1;
+}

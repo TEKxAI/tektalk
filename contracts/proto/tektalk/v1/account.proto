@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package tektalk.v1;
+
+import "tektalk/v1/common.proto";
+
+service AccountService {
+  rpc SignUp(SignUpRequest) returns (SignUpResponse);
+  rpc SignIn(SignInRequest) returns (SignInResponse);
+}
+
+message SignUpRequest {
+  RequestContext context = 1;
+  string identifier = 2;
+  string password = 3;
+  string display_name = 4;
+  string device_name = 5;
+}
+
+message SignUpResponse {
+  string account_id = 1;
+  string profile_id = 2;
+  string device_id = 3;
+  string access_token = 4;
+  string refresh_token = 5;
+}
+
+message SignInRequest {
+  RequestContext context = 1;
+  string identifier = 2;
+  string password = 3;
+  string device_id = 4;
+  string device_name = 5;
+}
+
+message SignInResponse {
+  string account_id = 1;
+  string profile_id = 2;
+  string device_id = 3;
+  string access_token = 4;
+  string refresh_token = 5;
+  bool device_verification_required = 6;
+  string challenge_id = 7;
+}

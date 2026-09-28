@@ -1,3 +1,10 @@
+x-platform-service: &platform-service
+  image: tektalk-platform-services:local
+  build:
+    context: .
+    dockerfile: services/platform-services/Dockerfile
+  restart: unless-stopped
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -74,6 +81,54 @@ services:
       RUST_LOG: tektalk_plugin_registry=info
     ports: ["50051:50051"]
     restart: unless-stopped
+  signin-signup:
+    <<: *platform-service
+    command: ["/usr/local/bin/signin-signup"]
+    environment:
+      SERVICE_BIND: 0.0.0.0:50052
+      RUST_LOG: tektalk_platform_services=info
+    ports: ["50052:50052"]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "50052"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  chat:
+    <<: *platform-service
+    command: ["/usr/local/bin/chat"]
+    environment:
+      SERVICE_BIND: 0.0.0.0:50053
+      RUST_LOG: tektalk_platform_services=info
+    ports: ["50053:50053"]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "50053"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  session-management:
+    <<: *platform-service
+    command: ["/usr/local/bin/session-management"]
+    environment:
+      SERVICE_BIND: 0.0.0.0:50054
+      RUST_LOG: tektalk_platform_services=info
+    ports: ["50054:50054"]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "50054"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  consent-management:
+    <<: *platform-service
+    command: ["/usr/local/bin/consent-management"]
+    environment:
+      SERVICE_BIND: 0.0.0.0:50055
+      RUST_LOG: tektalk_platform_services=info
+    ports: ["50055:50055"]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "50055"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 volumes:
   pg-data:
   redis-data:

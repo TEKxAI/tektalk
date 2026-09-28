@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package tektalk.v1;
+
+import "tektalk/v1/common.proto";
+
+service ConsentManagementService {
+  rpc GrantConsent(GrantConsentRequest) returns (GrantConsentResponse);
+  rpc RevokeConsent(RevokeConsentRequest) returns (RevokeConsentResponse);
+  rpc EvaluateConsent(EvaluateConsentRequest) returns (EvaluateConsentResponse);
+  rpc ListConsents(ListConsentsRequest) returns (ListConsentsResponse);
+}
+
+enum ConsentOwnerType {
+  CONSENT_OWNER_TYPE_UNSPECIFIED = 0;
+  CONSENT_OWNER_TYPE_PLATFORM = 1;
+  CONSENT_OWNER_TYPE_THIRD_PARTY = 2;
+}
+
+enum ConsentStatus {
+  CONSENT_STATUS_UNSPECIFIED = 0;
+  CONSENT_STATUS_GRANTED = 1;
+  CONSENT_STATUS_REVOKED = 2;
+  CONSENT_STATUS_EXPIRED = 3;
+}
+
+message ConsentRecord {
+  string consent_id = 1;
+  string user_id = 2;
+  ConsentOwnerType owner_type = 3;
+  string owner_id = 4;
+  string purpose = 5;
+  repeated string data_categories = 6;
+  repeated string scopes = 7;
+  ConsentStatus status = 8;
+  string policy_version = 9;
+  int64 granted_at_unix_ms = 10;
+  int64 expires_at_unix_ms = 11;
+  int64 revoked_at_unix_ms = 12;
+}
+
+message GrantConsentRequest {
+  RequestContext context = 1;
+  ConsentOwnerType owner_type = 2;
+  string owner_id = 3;
+  string purpose = 4;
+  repeated string data_categories = 5;
+  repeated string scopes = 6;
+  string policy_version = 7;
+  int64 expires_at_unix_ms = 8;
+}
+
+message GrantConsentResponse {
+  ConsentRecord consent = 1;
+}
+
+message RevokeConsentRequest {
+  RequestContext context = 1;
+  string consent_id = 2;
+  string reason = 3;
+}
+
+message RevokeConsentResponse {
+  ConsentRecord consent = 1;
+}
+
+message EvaluateConsentRequest {
+  RequestContext context = 1;
+  string user_id = 2;
+  ConsentOwnerType owner_type = 3;
+  string owner_id = 4;
+  string purpose = 5;
+  repeated string required_data_categories = 6;
+  repeated string required_scopes = 7;
+}
+
+message EvaluateConsentResponse {
+  bool allowed = 1;
+  string consent_id = 2;
+  repeated string missing_data_categories = 3;
+  repeated string missing_scopes = 4;
+  string failure_reason = 5;
+}
+
+message ListConsentsRequest {
+  RequestContext context = 1;
+  string user_id = 2;
+  ConsentOwnerType owner_type = 3;
+}
+
+message ListConsentsResponse {
+  repeated ConsentRecord consents = 1;
+}

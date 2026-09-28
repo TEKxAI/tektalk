@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package tektalk.v1;
+
+import "tektalk/v1/common.proto";
+
+service ChatService {
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+}
+
+enum MessageKind {
+  MESSAGE_KIND_UNSPECIFIED = 0;
+  MESSAGE_KIND_TEXT = 1;
+  MESSAGE_KIND_VOICE = 2;
+  MESSAGE_KIND_STICKER = 3;
+  MESSAGE_KIND_VIDEO = 4;
+  MESSAGE_KIND_PHOTO = 5;
+}
+
+message MediaReference {
+  string media_id = 1;
+  string mime_type = 2;
+  uint64 size_bytes = 3;
+  bytes sha256 = 4;
+  uint32 width = 5;
+  uint32 height = 6;
+  uint32 duration_ms = 7;
+}
+
+message SendMessageRequest {
+  RequestContext context = 1;
+  string conversation_id = 2;
+  string client_message_id = 3;
+  MessageKind kind = 4;
+  string text = 5;
+  MediaReference media = 6;
+  string sticker_id = 7;
+  int64 reply_to_message_id = 8;
+}
+
+message SendMessageResponse {
+  string client_message_id = 1;
+  int64 server_message_id = 2;
+  int64 committed_at_unix_ms = 3;
+  bool deduplicated = 4;
+}
+
+message GetMessagesRequest {
+  RequestContext context = 1;
+  string conversation_id = 2;
+  int64 before_message_id = 3;
+  uint32 limit = 4;
+}
+
+message ChatMessage {
+  int64 server_message_id = 1;
+  string conversation_id = 2;
+  string sender_id = 3;
+  MessageKind kind = 4;
+  string text = 5;
+  MediaReference media = 6;
+  string sticker_id = 7;
+  int64 committed_at_unix_ms = 8;
+}
+
+message GetMessagesResponse {
+  repeated ChatMessage messages = 1;
+  int64 next_before_message_id = 2;
+}

@@ -23,6 +23,23 @@ Service boundaries and ownership are defined in `services/README.md`; wire contr
 - Use mTLS workload identity between services.
 - Maintain backward-compatible fields within `tektalk.v1`; create a new package for breaking changes.
 - Never expose internal gRPC endpoints directly to mobile clients.
+
+### Platform services and authorization
+
+| Service | Domain | Responsibilities |
+|---|---|---|
+| Signin/Signup | Core Platform | Identifier registration, Argon2 password credentials, profile/device creation and login challenge |
+| Chat | OTT Platform | Text, voice, sticker, video and photo message validation, idempotency, ordering and history |
+| Session Management | Cross-platform security | Token lifecycle and audience/scope enforcement across L0, L1 and L2 |
+| Consent Management | Cross-platform privacy | Purpose-bound grants and revocation for platform and third-party data consumers |
+
+Authorization uses two gates: Session Management first proves the caller has a valid level, audience and scope; Consent Management then proves that the user granted the particular owner, purpose, data categories and scopes. A session alone never implies consent.
+
+| Level | Boundary | Scope families |
+|---|---|---|
+| L0 | Core Platform | identifier, profile |
+| L1 | Core Feature and Security Operation | L0 plus friend, group, community, oauth, security |
+| L2 | Business Application | L1 plus third-party app, mini-app and business |
 - Never share a database schema across services.
 
 ## Client host and plugins

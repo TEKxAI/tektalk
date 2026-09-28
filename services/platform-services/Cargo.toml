@@ -1,0 +1,17 @@
+[package]
+name = "tektalk-platform-services"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1"
+argon2 = "0.5"
+chrono = "0.4"
+dashmap = "6"
+tektalk-contracts = { path = "../contracts-rust" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+tonic = "0.12"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1", features = ["v4"] }
