@@ -54,11 +54,11 @@ impl AccountService for AccountServiceImpl {
 impl ChatService for ChatServiceImpl {
     async fn send_message(&self,request:Request<SendMessageRequest>)->Result<Response<SendMessageResponse>,Status>{
         let r=request.into_inner();required(&r.conversation_id,"conversation_id")?;required(&r.client_message_id,"client_message_id")?;
-        let context=r.context.ok_or_else(||Status::unauthenticated("request context is required"))?;required(&context.user_id,"user_id")?;
+        let context=r.context.as_ref().ok_or_else(||Status::unauthenticated("request context is required"))?;required(&context.user_id,"user_id")?;
         validate_message(&r)?;let dedup_key=format!("{}:{}",context.user_id,r.client_message_id);
         if let Some(id)=self.dedup.get(&dedup_key){return Ok(Response::new(SendMessageResponse{client_message_id:r.client_message_id,server_message_id:*id,committed_at_unix_ms:now_ms(),deduplicated:true}));}
         let id=self.next_id.fetch_add(1,Ordering::Relaxed)+1;let committed=now_ms();
-        self.messages.entry(r.conversation_id.clone()).or_default().push(ChatMessage{server_message_id:id,conversation_id:r.conversation_id,sender_id:context.user_id,kind:r.kind,text:r.text,media:r.media,sticker_id:r.sticker_id,committed_at_unix_ms:committed});self.dedup.insert(dedup_key,id);
+        self.messages.entry(r.conversation_id.clone()).or_default().push(ChatMessage{server_message_id:id,conversation_id:r.conversation_id,sender_id:context.user_id.clone(),kind:r.kind,text:r.text,media:r.media,sticker_id:r.sticker_id,committed_at_unix_ms:committed});self.dedup.insert(dedup_key,id);
         Ok(Response::new(SendMessageResponse{client_message_id:r.client_message_id,server_message_id:id,committed_at_unix_ms:committed,deduplicated:false}))
     }
     async fn get_messages(&self,request:Request<GetMessagesRequest>)->Result<Response<GetMessagesResponse>,Status>{
