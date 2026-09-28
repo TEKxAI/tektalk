@@ -2,7 +2,7 @@ use std::{env, net::SocketAddr};
 
 use tektalk_contracts::v1::{
     plugin_registry_service_server::{PluginRegistryService, PluginRegistryServiceServer},
-    PluginDescriptor, PluginHealthReport, ReportPluginHealthResponse, ResolvePluginSetRequest,
+    PluginDescriptor, ReportPluginHealthRequest, ReportPluginHealthResponse, ResolvePluginSetRequest,
     ResolvePluginSetResponse,
 };
 use tonic::{transport::Server, Request, Response, Status};
@@ -50,7 +50,7 @@ impl PluginRegistryService for Registry {
 
     async fn report_plugin_health(
         &self,
-        request: Request<PluginHealthReport>,
+        request: Request<ReportPluginHealthRequest>,
     ) -> Result<Response<ReportPluginHealthResponse>, Status> {
         let report = request.into_inner();
         tracing::info!(plugin_id = %report.plugin_id, state = %report.state, "plugin health");

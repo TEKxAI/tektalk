@@ -6,7 +6,7 @@ import "tektalk/v1/common.proto";
 
 service PluginRegistryService {
   rpc ResolvePluginSet(ResolvePluginSetRequest) returns (ResolvePluginSetResponse);
-  rpc ReportPluginHealth(PluginHealthReport) returns (ReportPluginHealthResponse);
+  rpc ReportPluginHealth(ReportPluginHealthRequest) returns (ReportPluginHealthResponse);
 }
 
 message ResolvePluginSetRequest {
@@ -37,7 +37,7 @@ message ResolvePluginSetResponse {
   int64 expires_at_unix_ms = 4;
 }
 
-message PluginHealthReport {
+message ReportPluginHealthRequest {
   RequestContext context = 1;
   string plugin_id = 2;
   string plugin_version = 3;

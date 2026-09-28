@@ -2,6 +2,8 @@ FROM rust:1.98-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.toml
 COPY server server
+COPY services services
+COPY contracts contracts
 COPY infra infra
 RUN cargo build --release -p chat-server
 FROM debian:bookworm-slim
