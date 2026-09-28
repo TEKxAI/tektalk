@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "tektalk.ai",
+  "version": "0.1.0",
+  "entryPoint": "AIPlugin",
+  "minimumHostVersion": "0.1.0",
+  "capabilities": ["camera", "media-picker", "location", "share"],
+  "tab": {"titleKey": "tab.ai", "icon": "sparkles", "order": 1}
+}

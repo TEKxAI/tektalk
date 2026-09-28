@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "tektalk.message",
+  "version": "0.1.0",
+  "entryPoint": "MessagePlugin",
+  "minimumHostVersion": "0.1.0",
+  "capabilities": ["camera", "media-picker", "notifications", "share"],
+  "tab": {"titleKey": "tab.message", "icon": "message", "order": 0}
+}

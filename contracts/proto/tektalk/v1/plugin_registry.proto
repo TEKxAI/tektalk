@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package tektalk.v1;
+
+import "tektalk/v1/common.proto";
+
+service PluginRegistryService {
+  rpc ResolvePluginSet(ResolvePluginSetRequest) returns (ResolvePluginSetResponse);
+  rpc ReportPluginHealth(PluginHealthReport) returns (ReportPluginHealthResponse);
+}
+
+message ResolvePluginSetRequest {
+  RequestContext context = 1;
+  string platform = 2;
+  string architecture = 3;
+  string host_version = 4;
+  string locale = 5;
+}
+
+message PluginDescriptor {
+  string id = 1;
+  string version = 2;
+  string entry_point = 3;
+  string module_url = 4;
+  bytes sha256 = 5;
+  bytes signature = 6;
+  string minimum_host_version = 7;
+  repeated string capabilities = 8;
+  uint32 tab_order = 9;
+  bool required = 10;
+}
+
+message ResolvePluginSetResponse {
+  string catalog_version = 1;
+  repeated PluginDescriptor plugins = 2;
+  bytes catalog_signature = 3;
+  int64 expires_at_unix_ms = 4;
+}
+
+message PluginHealthReport {
+  RequestContext context = 1;
+  string plugin_id = 2;
+  string plugin_version = 3;
+  string state = 4;
+  string failure_code = 5;
+}
+
+message ReportPluginHealthResponse {
+  bool accepted = 1;
+}

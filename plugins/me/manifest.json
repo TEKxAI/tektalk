@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "tektalk.me",
+  "version": "0.1.0",
+  "entryPoint": "MePlugin",
+  "minimumHostVersion": "0.1.0",
+  "capabilities": ["camera", "media-picker", "notifications", "secure-storage"],
+  "tab": {"titleKey": "tab.me", "icon": "person", "order": 2}
+}

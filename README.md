@@ -33,7 +33,9 @@ flowchart TB
     C -. "async events" .-> K[(Kafka/Redpanda)]
 ```
 
-The runnable Rust service keeps edge, identity, and realtime domains in one deployable for the first vertical slice, but their ports and modules are separated. Scale them independently by extracting modules behind the same interfaces. See `docs/architecture.md` and `docs/protocol.md`.
+The runnable Rust service keeps edge, identity, and realtime domains in one deployable for the first vertical slice, but their ports and modules are separated. Scale them independently by extracting modules behind the same interfaces. See `docs/architecture.md` and `protocol/mtproto-2.0.md`.
+
+The target architecture uses domain-owned microservices with internal gRPC/Protobuf contracts, a native host with remotely delivered Valdi plugins, and a C++20 shared core for deterministic cross-platform logic. See `docs/target-architecture.md`, `services/README.md`, `contracts/README.md`, `core/README.md`, and `plugins/README.md`.
 
 ## Quick start
 
@@ -62,6 +64,10 @@ The realtime protocol uses the MTProto 2.0 established-session envelope, SHA-256
 ## Repository map
 
 - `server/` Rust HTTPS and realtime service
+- `services/` target microservice boundaries and extraction plan
+- `contracts/` versioned internal gRPC/Protobuf APIs
+- `core/` shared C++20 session, sync, networking and storage foundation
+- `plugins/` signed Valdi plugin manifests and delivery contract
 - `protocol/mtproto-2.0.md` normative wire specification
 - `clients/android/` Kotlin client core and Compose sample
 - `clients/ios/` Swift client core and SwiftUI sample

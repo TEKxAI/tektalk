@@ -65,6 +65,15 @@ services:
       scylla: {condition: service_healthy}
       redpanda: {condition: service_healthy}
     restart: unless-stopped
+  plugin-registry:
+    build:
+      context: .
+      dockerfile: services/plugin-registry/Dockerfile
+    environment:
+      PLUGIN_REGISTRY_BIND: 0.0.0.0:50051
+      RUST_LOG: tektalk_plugin_registry=info
+    ports: ["50051:50051"]
+    restart: unless-stopped
 volumes:
   pg-data:
   redis-data:

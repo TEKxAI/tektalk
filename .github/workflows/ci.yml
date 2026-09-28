@@ -1,6 +1,23 @@
 name: ci
 on: [push, pull_request]
 jobs:
+  architecture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-setup-action@v1
+      - name: Lint gRPC contracts
+        working-directory: contracts
+        run: buf lint
+      - name: Validate plugin manifests
+        run: |
+          jq --exit-status . plugins/plugin-manifest.schema.json >/dev/null
+          for manifest in plugins/*/manifest.json; do jq --exit-status . "$manifest" >/dev/null; done
+      - name: Build and test shared C++ core
+        run: |
+          cmake -S core -B build/core -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/core --parallel
+          ctest --test-dir build/core --output-on-failure
   rust:
     runs-on: ubuntu-latest
     steps:

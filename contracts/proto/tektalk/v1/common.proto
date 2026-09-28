@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package tektalk.v1;
+
+message RequestContext {
+  string request_id = 1;
+  string trace_id = 2;
+  string user_id = 3;
+  string device_id = 4;
+  int64 deadline_unix_ms = 5;
+}
+
+message Empty {}
+
+message Ack {
+  string request_id = 1;
+  bool accepted = 2;
+  string reason = 3;
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-required='Cargo.toml server/src/main.rs protocol/mtproto-2.0.md docs/tektalk-engineering.md docs/getting-started.md docs/deployment.md scripts/local-up.sh scripts/local-down.sh scripts/smoke-test.sh clients/android/app/src/main/java/vn/tektalk/Protocol.kt clients/ios/TEKtalk/TEKProtocol.swift infra/postgres/001_init.sql infra/scylla/schema.cql infra/k8s/base.yaml'
+required='Cargo.toml server/src/main.rs services/plugin-registry/src/main.rs services/plugin-registry/Dockerfile protocol/mtproto-2.0.md docs/tektalk-engineering.md docs/target-architecture.md docs/getting-started.md docs/deployment.md contracts/buf.yaml contracts/proto/tektalk/v1/plugin_registry.proto core/CMakeLists.txt core/include/tektalk/ffi.h plugins/plugin-manifest.schema.json plugins/message/manifest.json plugins/message/src/MessagePlugin.tsx plugins/ai/manifest.json plugins/ai/src/AIPlugin.tsx plugins/me/manifest.json plugins/me/src/MePlugin.tsx scripts/local-up.sh scripts/local-down.sh scripts/smoke-test.sh clients/android/app/src/main/java/vn/tektalk/Protocol.kt clients/android/app/src/main/java/vn/tektalk/plugins/PluginContract.kt clients/ios/TEKtalk/TEKProtocol.swift clients/ios/TEKtalk/PluginContract.swift infra/postgres/001_init.sql infra/scylla/schema.cql infra/k8s/base.yaml'
 for file in $required; do test -s "$root/$file" || { echo "missing: $file" >&2; exit 1; }; done
 grep -q 'tektalk-mtproto-bootstrap-v1' "$root/server/src/realtime.rs"
 grep -q 'object MTProto2' "$root/clients/android/app/src/main/java/vn/tektalk/Protocol.kt"

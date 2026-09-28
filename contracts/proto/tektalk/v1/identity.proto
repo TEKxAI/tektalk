@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package tektalk.v1;
+
+import "tektalk/v1/common.proto";
+
+service IdentityService {
+  rpc ResolveSession(ResolveSessionRequest) returns (ResolveSessionResponse);
+  rpc RevokeDevice(RevokeDeviceRequest) returns (RevokeDeviceResponse);
+}
+
+message ResolveSessionRequest {
+  RequestContext context = 1;
+  string access_token = 2;
+}
+
+message ResolveSessionResponse {
+  string user_id = 1;
+  string device_id = 2;
+  repeated string scopes = 3;
+  int64 expires_at_unix_ms = 4;
+}
+
+message RevokeDeviceRequest {
+  RequestContext context = 1;
+  string target_device_id = 2;
+}
+
+message RevokeDeviceResponse {
+  bool accepted = 1;
+  string reason = 2;
+}
