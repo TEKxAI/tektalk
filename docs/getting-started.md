@@ -104,7 +104,7 @@ Expected result: the layout guard reports success, Rust tests pass, the Android 
 2. Trace HTTPS authentication using `docs/auth-flows.md` and `docs/api.md`.
 3. Study `protocol/mtproto-2.0.md` together with `server/src/mtproto.rs`.
 4. Compare Android and iOS protocol adapters.
-5. Use `docs/telegram-engineering.md` to study which Telegram patterns are adopted, adapted, or intentionally excluded.
+5. Use `docs/tektalk-engineering.md` to study the selected client, server, delivery, sync and media patterns.
 6. Deploy the template with `docs/deployment.md`.
 
 Never reuse development secrets, OTP echo mode, test credentials, or local HTTP endpoints in a public environment.

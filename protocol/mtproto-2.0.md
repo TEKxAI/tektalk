@@ -1,8 +1,8 @@
 # TEKtalk MTProto 2.0 Wire Protocol
 
-TEKtalk realtime messages use the MTProto 2.0 established-session encrypted envelope. The wire codec uses Telegram's MTProto 2.0 `auth_key_id`, SHA-256 `msg_key` derivation, AES-256-IGE encryption, internal message header, and authenticated random padding.
+TEKtalk realtime messages use an MTProto 2.0 established-session encrypted envelope. The wire codec uses `auth_key_id`, SHA-256 `msg_key` derivation, AES-256-IGE encryption, an internal message header and authenticated random padding.
 
-This document describes the code currently shipped in this repository. TEKtalk adopts selected MTProto 2.0 mechanisms but does not target full Telegram client interoperability. Reliability patterns such as service messages, salt rotation, containers and ACK/resend are tracked in `docs/telegram-engineering.md`; the full Telegram TL API is intentionally out of scope.
+This document describes the code currently shipped in this repository. Reliability patterns such as service messages, salt rotation, containers and ACK/resend are tracked in `docs/tektalk-engineering.md`. TEKtalk owns its application schema and does not require third-party client interoperability.
 
 ## Session bootstrap
 
@@ -12,7 +12,7 @@ This document describes the code currently shipped in this repository. TEKtalk a
 4. Both peers calculate the X25519 shared secret and expand a 256-byte MTProto authorization key with HKDF-SHA256 using salt `tektalk-mtproto-bootstrap-v1` and info `mtproto-auth-key`.
 5. Every following binary WebSocket message contains one MTProto 2.0 encrypted message.
 
-The X25519 bootstrap is an explicitly isolated TEKtalk adapter rather than Telegram's RSA/DH authorization-key exchange. This keeps the template compact while allowing the bootstrap to be reviewed or replaced independently of the MTProto 2.0 message codec.
+The X25519 bootstrap is an explicitly isolated TEKtalk adapter. This keeps the template compact while allowing the bootstrap to be reviewed or replaced independently of the MTProto 2.0 message codec.
 
 ## Encrypted message
 
@@ -40,7 +40,7 @@ Client-to-server and server-to-client directions use the MTProto 2.0 KDF with of
 
 ## Application payload
 
-The current vertical slice carries TEKtalk JSON commands inside the MTProto message body. A compact generated binary schema is a future optimization; full Telegram TL compatibility is not a project requirement. The encryption envelope must not be described as a proprietary TEKtalk v1 frame.
+The current vertical slice carries TEKtalk JSON commands inside the MTProto message body. A compact generated TEKtalk binary schema is a future optimization. The encryption envelope must not be described as the retired TEKtalk v1 frame.
 
 ## Transport
 

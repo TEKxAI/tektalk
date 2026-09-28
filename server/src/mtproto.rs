@@ -1,6 +1,6 @@
 //! MTProto 2.0 encrypted-message codec.
 //!
-//! This module implements Telegram's documented established-session wire format:
+//! This module implements the MTProto 2.0 established-session wire format used by TEKtalk:
 //! auth_key_id, msg_key, SHA-256 KDF, AES-256-IGE, internal header and padding.
 //! Authorization-key negotiation is intentionally outside this module.
 use aes::{cipher::{BlockDecrypt, BlockEncrypt, KeyInit, generic_array::GenericArray}, Aes256};

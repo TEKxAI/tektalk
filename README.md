@@ -2,9 +2,9 @@
 
 Reusable educational template for studying a mobile chat system with native iOS and Android clients, a Rust edge/API service, an MTProto 2.0 established-session encrypted envelope, PostgreSQL identity state, Redis ephemeral state, and extension points for ScyllaDB and Kafka-compatible events.
 
-This is an independent educational reference implementation for TEK, not the production source code of any commercial messaging platform. It deliberately selects high-value Telegram engineering patterns without requiring official Telegram clients or the full Telegram API to interoperate with TEKtalk.
+This is an independent educational reference implementation for TEK, not the production source code of any commercial messaging platform. Its public API, product model, components and branding are independently owned by TEKtalk.
 
-The selected protocol, client, server, sync, delivery and media patterns are tracked in `docs/telegram-engineering.md`. The AES-IGE/KDF codec is the active realtime encryption path and is covered by server tests and native client builds.
+The selected protocol, client, server, sync, delivery and media patterns are tracked in `docs/tektalk-engineering.md`. The AES-IGE/KDF codec is the active realtime encryption path and is covered by server tests and native client builds.
 
 ## Included vertical slice
 
