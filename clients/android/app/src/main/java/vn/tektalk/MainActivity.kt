@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package vn.tektalk
 
 import android.os.Bundle
@@ -21,7 +23,7 @@ import kotlinx.coroutines.withContext
 
 class MainActivity:ComponentActivity(){override fun onCreate(state:Bundle?){super.onCreate(state);setContent{TEKtalkTheme{TEKtalkApp()}}}}
 private val TekBlue=Color(0xFF1769E0)
-@Composable private fun TEKtalkTheme(content:@Composable()->Unit){MaterialTheme(colorScheme=lightColorScheme(primary=TekBlue),content=content)}
+@Composable private fun TEKtalkTheme(content:@Composable ()->Unit){MaterialTheme(colorScheme=lightColorScheme(primary=TekBlue),content=content)}
 @Composable fun TEKtalkApp(){var tokens by remember{mutableStateOf<Tokens?>(null)};if(tokens==null)AuthFlow{tokens=it}else HostTabs(tokens!!){tokens=null}}
 
 private enum class AuthMode{Login,Register,Verify}
