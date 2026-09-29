@@ -3,5 +3,10 @@ struct RegisterRequest: Codable { let phone, display_name, password, security_qu
 struct LoginRequest: Codable { let phone: String; let password: String; let device_id: UUID?; let device_name: String }
 struct Tokens: Codable { let access_token, refresh_token: String; let user_id, device_id: UUID }
 struct LoginResponse: Codable { let status: String; let tokens: Tokens?; let challenge_id: UUID?; let question: String? }
+struct VerifyDeviceRequest: Codable { let challenge_id: UUID; let answer: String }
 struct BootstrapRequest: Codable { let access_token: String }
 struct Bootstrap: Codable { let ticket, server_public_key: String; let expires_in_seconds, protocol_version: Int }
+struct SendMessageRequest: Codable { let conversation_id, recipient_id, client_message_id: UUID; let text: String }
+struct HistoryRequest: Codable { let conversation_id: UUID; let before_message_id: Int64?; let limit: Int }
+struct ChatMessage: Codable, Identifiable { let id: Int64; let conversation_id, sender_id, recipient_id, client_message_id: UUID; let body, created_at: String }
+struct SendMessageResponse: Codable { let message: ChatMessage; let deduplicated: Bool }

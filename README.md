@@ -19,6 +19,7 @@ The selected protocol, client, server, sync, delivery and media patterns are tra
 - PostgreSQL migrations, Scylla schema, Redis/Kafka integration points
 - Docker Compose local dependencies, Kubernetes manifests, OpenTelemetry hooks, and CI
 - Independent gRPC services for account, OTT chat, L0/L1/L2 sessions, and consent
+- Clean-room native registration, login, device verification and direct text chat UI for Android and iOS
 
 ## Architecture
 
@@ -74,3 +75,5 @@ The realtime protocol uses the MTProto 2.0 established-session envelope, SHA-256
 - `clients/ios/` Swift client core and SwiftUI sample
 - `infra/` database, Kubernetes, and observability configuration
 - `docs/` architecture, authentication flows, runbook, and threat model
+
+Client production status and the remaining secure-storage, realtime, media, push and calling gates are tracked in `docs/client-production.md`.
