@@ -1,12 +1,21 @@
 import Foundation
+import UIKit
 final class APIClient {
     let baseURL: URL
-    init(baseURL: URL = URL(string: "http://localhost:8080")!) { self.baseURL = baseURL }
-    func post<I: Encodable, O: Decodable>(_ path: String, body: I, token: String? = nil) async throws -> O {
+    private let session: URLSession
+    init(baseURL: URL = URL(string: "http://localhost:8080")!, session: URLSession = .shared) {
+        self.baseURL = baseURL
+        self.session = session
+    }
+    func makeRequest<I: Encodable>(_ path: String, body: I, token: String? = nil) throws -> URLRequest {
         var request = URLRequest(url: baseURL.appendingPathComponent(path)); request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type"); request.httpBody = try JSONEncoder().encode(body)
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        let (data,response)=try await URLSession.shared.data(for: request)
+        return request
+    }
+    func post<I: Encodable, O: Decodable>(_ path: String, body: I, token: String? = nil) async throws -> O {
+        let request = try makeRequest(path, body: body, token: token)
+        let (data,response)=try await session.data(for: request)
         guard let http=response as? HTTPURLResponse,(200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
         return try JSONDecoder().decode(O.self,from:data)
     }

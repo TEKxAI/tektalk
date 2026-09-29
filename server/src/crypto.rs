@@ -34,3 +34,27 @@ pub fn validate_password(value: &str) -> AppResult<()> {
 }
 
 fn hex(bytes: &[u8]) -> String { bytes.iter().map(|b| format!("{b:02x}")).collect() }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn password_policy_and_hash_verification_cover_success_and_failure() {
+        assert!(validate_password("Password123").is_ok());
+        assert!(validate_password("short1A").is_err());
+        assert!(validate_password("password123").is_err());
+        assert!(validate_password("PasswordOnly").is_err());
+        let hash = hash_password("Password123").unwrap();
+        assert!(verify_password(&hash, "Password123"));
+        assert!(!verify_password(&hash, "Password124"));
+        assert!(!verify_password("not-a-phc-hash", "Password123"));
+    }
+
+    #[test]
+    fn security_answers_are_normalized_and_hmac_is_deterministic() {
+        assert_eq!(normalize_answer("  My   First SCHOOL "), "my first school");
+        assert_eq!(hmac_hex(b"secret", "value"), hmac_hex(b"secret", "value"));
+        assert_ne!(hmac_hex(b"secret", "value"), hmac_hex(b"secret", "other"));
+    }
+}

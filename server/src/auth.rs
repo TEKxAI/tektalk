@@ -89,3 +89,20 @@ pub fn claims(s:&AppState, headers:&HeaderMap)->AppResult<token::Claims>{ let h=
 async fn make_tokens(s:&AppState,user_id:Uuid,device_id:Uuid)->AppResult<AuthTokens>{ let access_token=token::issue(&s.config.jwt_secret,user_id,device_id)?; let refresh_token=Uuid::new_v4().to_string()+&Uuid::new_v4().to_string(); let digest=crypto::hmac_hex(s.config.jwt_secret.as_bytes(),&refresh_token); sqlx::query("INSERT INTO refresh_tokens(user_id,device_id,token_digest,expires_at) VALUES($1,$2,$3,now()+interval '30 days')").bind(user_id).bind(device_id).bind(digest).execute(&s.db).await?; Ok(AuthTokens{access_token,refresh_token,user_id,device_id}) }
 
 fn normalize_phone(v:&str)->AppResult<String>{ let clean:String=v.chars().filter(|c|c.is_ascii_digit()||*c=='+').collect(); if !clean.starts_with('+')||clean.len()<9||clean.len()>16{return Err(AppError::Invalid("phone must be E.164"));} Ok(clean) }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn phone_normalization_accepts_common_formatting() {
+        assert_eq!(normalize_phone(" +84 (90) 123-4567 ").unwrap(), "+84901234567");
+    }
+
+    #[test]
+    fn phone_normalization_rejects_missing_country_code_and_invalid_length() {
+        assert!(matches!(normalize_phone("0901234567"), Err(AppError::Invalid(_))));
+        assert!(matches!(normalize_phone("+123"), Err(AppError::Invalid(_))));
+        assert!(matches!(normalize_phone("+12345678901234567"), Err(AppError::Invalid(_))));
+    }
+}

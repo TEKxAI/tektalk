@@ -18,3 +18,24 @@ pub fn verify(secret: &str, value: &str) -> AppResult<Claims> {
         .map(|d| d.claims).map_err(|_| AppError::Unauthorized)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn issued_token_round_trips_and_is_bound_to_secret() {
+        let user = Uuid::new_v4();
+        let device = Uuid::new_v4();
+        let token = issue("a-secret-that-is-long-enough-for-tests", user, device).unwrap();
+        let claims = verify("a-secret-that-is-long-enough-for-tests", &token).unwrap();
+        assert_eq!(claims.sub, user);
+        assert_eq!(claims.device, device);
+        assert!(claims.exp > claims.iat);
+        assert!(matches!(verify("another-secret-that-is-long-enough", &token), Err(AppError::Unauthorized)));
+    }
+
+    #[test]
+    fn malformed_token_is_rejected() {
+        assert!(matches!(verify("a-secret-that-is-long-enough-for-tests", "not-a-jwt"), Err(AppError::Unauthorized)));
+    }
+}

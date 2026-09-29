@@ -28,3 +28,35 @@ pub async fn history(State(state):State<AppState>,headers:HeaderMap,Json(request
     let messages=sqlx::query_as::<_,ChatMessage>("SELECT id,conversation_id,sender_id,recipient_id,client_message_id,body,created_at FROM messages WHERE conversation_id=$1 AND id<$2 AND (sender_id=$3 OR recipient_id=$3) ORDER BY id DESC LIMIT $4").bind(request.conversation_id).bind(before).bind(claims.sub).bind(limit).fetch_all(&state.db).await?;
     Ok(Json(messages.into_iter().rev().collect()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn send_payload_deserializes_all_required_identifiers() {
+        let conversation_id = Uuid::new_v4();
+        let recipient_id = Uuid::new_v4();
+        let client_message_id = Uuid::new_v4();
+        let payload = serde_json::json!({
+            "conversation_id": conversation_id, "recipient_id": recipient_id,
+            "client_message_id": client_message_id, "text": "hello"
+        });
+        let request: SendMessage = serde_json::from_value(payload).unwrap();
+        assert_eq!(request.conversation_id, conversation_id);
+        assert_eq!(request.recipient_id, recipient_id);
+        assert_eq!(request.client_message_id, client_message_id);
+        assert_eq!(request.text, "hello");
+    }
+
+    #[test]
+    fn history_payload_supports_first_page_and_cursor_page() {
+        let conversation_id = Uuid::new_v4();
+        let first: MessageHistory = serde_json::from_value(serde_json::json!({"conversation_id": conversation_id})).unwrap();
+        assert!(first.before_message_id.is_none());
+        assert!(first.limit.is_none());
+        let cursor: MessageHistory = serde_json::from_value(serde_json::json!({"conversation_id": conversation_id, "before_message_id": 42, "limit": 100})).unwrap();
+        assert_eq!(cursor.before_message_id, Some(42));
+        assert_eq!(cursor.limit, Some(100));
+    }
+}

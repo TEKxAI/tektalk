@@ -123,7 +123,187 @@ pub fn init_tracing(){let _=tracing_subscriber::fmt().json().with_env_filter(tra
 
 #[cfg(test)] mod tests {
     use super::*;
+    use tektalk_contracts::v1::{MediaReference, RequestContext};
+
+    fn context(user_id: &str) -> Option<RequestContext> {
+        Some(RequestContext { user_id: user_id.into(), ..Default::default() })
+    }
+
+    fn text_message(user_id: &str, client_id: &str, text: &str) -> SendMessageRequest {
+        SendMessageRequest {
+            context: context(user_id),
+            conversation_id: "conversation-1".into(),
+            client_message_id: client_id.into(),
+            kind: MessageKind::Text as i32,
+            text: text.into(),
+            ..Default::default()
+        }
+    }
+
     #[test] fn l0_rejects_business_scope(){assert!(validate_scopes(AccessLevel::L0CorePlatform as i32,&["app.read".into()]).is_err());}
     #[test] fn l2_accepts_business_scope(){assert!(validate_scopes(AccessLevel::L2BusinessApplication as i32,&["miniapp.launch".into()]).is_ok());}
     #[test] fn media_message_requires_reference(){let r=SendMessageRequest{kind:MessageKind::Photo as i32,..Default::default()};assert!(validate_message(&r).is_err());}
+
+    #[test]
+    fn every_supported_message_kind_enforces_its_payload_contract() {
+        let text = SendMessageRequest { kind: MessageKind::Text as i32, text: "  ".into(), ..Default::default() };
+        let sticker = SendMessageRequest { kind: MessageKind::Sticker as i32, ..Default::default() };
+        let voice = SendMessageRequest { kind: MessageKind::Voice as i32, media: Some(MediaReference::default()), ..Default::default() };
+        let unspecified = SendMessageRequest::default();
+        assert!(validate_message(&text).is_err());
+        assert!(validate_message(&sticker).is_err());
+        assert!(validate_message(&voice).is_ok());
+        assert!(validate_message(&unspecified).is_err());
+    }
+
+    #[tokio::test]
+    async fn account_signup_login_covers_duplicate_password_and_device_trust() {
+        let service = AccountServiceImpl::default();
+        let signup = SignUpRequest {
+            identifier: "+84901234567".into(), password: "Password123".into(),
+            display_name: "TEK User".into(), device_name: "phone".into(), ..Default::default()
+        };
+        let created = service.sign_up(Request::new(signup.clone())).await.unwrap().into_inner();
+        assert!(!created.account_id.is_empty());
+        assert_eq!(service.sign_up(Request::new(signup)).await.unwrap_err().code(), tonic::Code::AlreadyExists);
+
+        let wrong = SignInRequest { identifier: "+84901234567".into(), password: "wrong".into(), device_id: created.device_id.clone(), ..Default::default() };
+        assert_eq!(service.sign_in(Request::new(wrong)).await.unwrap_err().code(), tonic::Code::Unauthenticated);
+
+        let trusted = SignInRequest { identifier: "+84901234567".into(), password: "Password123".into(), device_id: created.device_id, ..Default::default() };
+        let trusted = service.sign_in(Request::new(trusted)).await.unwrap().into_inner();
+        assert!(!trusted.device_verification_required);
+        assert!(!trusted.access_token.is_empty());
+
+        let unknown = SignInRequest { identifier: "+84901234567".into(), password: "Password123".into(), device_id: "new-device".into(), ..Default::default() };
+        let unknown = service.sign_in(Request::new(unknown)).await.unwrap().into_inner();
+        assert!(unknown.device_verification_required);
+        assert!(unknown.access_token.is_empty());
+        assert!(!unknown.challenge_id.is_empty());
+    }
+
+    #[tokio::test]
+    async fn chat_is_idempotent_and_paginates_in_chronological_order() {
+        let service = ChatServiceImpl::default();
+        let first = service.send_message(Request::new(text_message("u1", "c1", "one"))).await.unwrap().into_inner();
+        let duplicate = service.send_message(Request::new(text_message("u1", "c1", "changed"))).await.unwrap().into_inner();
+        assert_eq!(duplicate.server_message_id, first.server_message_id);
+        assert!(duplicate.deduplicated);
+
+        let second = service.send_message(Request::new(text_message("u1", "c2", "two"))).await.unwrap().into_inner();
+        let third = service.send_message(Request::new(text_message("u1", "c3", "three"))).await.unwrap().into_inner();
+        let page = service.get_messages(Request::new(GetMessagesRequest {
+            conversation_id: "conversation-1".into(), limit: 2, ..Default::default()
+        })).await.unwrap().into_inner();
+        assert_eq!(page.messages.iter().map(|m| m.text.as_str()).collect::<Vec<_>>(), ["two", "three"]);
+        assert_eq!(page.next_before_message_id, second.server_message_id);
+
+        let previous = service.get_messages(Request::new(GetMessagesRequest {
+            conversation_id: "conversation-1".into(), before_message_id: page.next_before_message_id,
+            limit: 1000, ..Default::default()
+        })).await.unwrap().into_inner();
+        assert_eq!(previous.messages.len(), 1);
+        assert_eq!(previous.messages[0].server_message_id, first.server_message_id);
+        assert!(third.server_message_id > second.server_message_id);
+    }
+
+    #[tokio::test]
+    async fn chat_deduplication_is_scoped_to_sender() {
+        let service = ChatServiceImpl::default();
+        let first = service.send_message(Request::new(text_message("u1", "same-id", "one"))).await.unwrap().into_inner();
+        let second = service.send_message(Request::new(text_message("u2", "same-id", "two"))).await.unwrap().into_inner();
+        assert!(!first.deduplicated && !second.deduplicated);
+        assert_ne!(first.server_message_id, second.server_message_id);
+    }
+
+    async fn l0_session(service: &SessionManagementServiceImpl) -> CreateSessionResponse {
+        service.create_session(Request::new(CreateSessionRequest {
+            account_id: "account-1".into(), device_id: "device-1".into(),
+            requested_level: AccessLevel::L0CorePlatform as i32, audience: "core".into(),
+            requested_scopes: vec!["profile.read".into()], ..Default::default()
+        })).await.unwrap().into_inner()
+    }
+
+    #[tokio::test]
+    async fn session_validation_checks_scope_audience_level_and_revocation() {
+        let service = SessionManagementServiceImpl::default();
+        let created = l0_session(&service).await;
+        let valid = service.validate_session(Request::new(ValidateSessionRequest {
+            access_token: created.access_token.clone(), required_level: AccessLevel::L0CorePlatform as i32,
+            required_scopes: vec!["profile.read".into()], audience: "core".into(), ..Default::default()
+        })).await.unwrap().into_inner();
+        assert!(valid.valid);
+
+        for request in [
+            ValidateSessionRequest { access_token: created.access_token.clone(), required_level: AccessLevel::L1CoreFeature as i32, audience: "core".into(), ..Default::default() },
+            ValidateSessionRequest { access_token: created.access_token.clone(), required_level: AccessLevel::L0CorePlatform as i32, required_scopes: vec!["profile.write".into()], audience: "core".into(), ..Default::default() },
+            ValidateSessionRequest { access_token: created.access_token.clone(), required_level: AccessLevel::L0CorePlatform as i32, audience: "other".into(), ..Default::default() },
+        ] { assert!(!service.validate_session(Request::new(request)).await.unwrap().into_inner().valid); }
+
+        service.revoke_session(Request::new(RevokeSessionRequest { session_id: created.session_id, reason: "logout".into(), ..Default::default() })).await.unwrap();
+        let revoked = service.validate_session(Request::new(ValidateSessionRequest { access_token: created.access_token, audience: "core".into(), ..Default::default() })).await.unwrap().into_inner();
+        assert!(!revoked.valid);
+        assert_eq!(revoked.failure_reason, "unknown token");
+    }
+
+    #[tokio::test]
+    async fn session_elevation_requires_proof_and_rotates_token() {
+        let service = SessionManagementServiceImpl::default();
+        let created = l0_session(&service).await;
+        let no_proof = ElevateSessionRequest { session_id: created.session_id.clone(), target_level: AccessLevel::L1CoreFeature as i32, requested_scopes: vec!["friend.read".into()], ..Default::default() };
+        assert_eq!(service.elevate_session(Request::new(no_proof)).await.unwrap_err().code(), tonic::Code::InvalidArgument);
+        let elevated = service.elevate_session(Request::new(ElevateSessionRequest {
+            session_id: created.session_id, target_level: AccessLevel::L1CoreFeature as i32,
+            requested_scopes: vec!["friend.read".into()], security_proof: "step-up-proof".into(), ..Default::default()
+        })).await.unwrap().into_inner();
+        assert_ne!(elevated.access_token, created.access_token);
+        assert!(elevated.granted_scopes.contains(&"profile.read".into()));
+        assert!(elevated.granted_scopes.contains(&"friend.read".into()));
+        let old = service.validate_session(Request::new(ValidateSessionRequest { access_token: created.access_token, audience: "core".into(), ..Default::default() })).await.unwrap().into_inner();
+        assert!(!old.valid);
+    }
+
+    fn grant(user: &str, expires_at: i64) -> GrantConsentRequest {
+        GrantConsentRequest { context: context(user), owner_type: ConsentOwnerType::ThirdParty as i32,
+            owner_id: "partner-1".into(), purpose: "personalization".into(), data_categories: vec!["profile".into()],
+            scopes: vec!["profile.read".into()], policy_version: "v1".into(), expires_at_unix_ms: expires_at }
+    }
+
+    fn evaluate(user: &str) -> EvaluateConsentRequest {
+        EvaluateConsentRequest { user_id: user.into(), owner_type: ConsentOwnerType::ThirdParty as i32,
+            owner_id: "partner-1".into(), purpose: "personalization".into(),
+            required_data_categories: vec!["profile".into()], required_scopes: vec!["profile.read".into()], ..Default::default() }
+    }
+
+    #[tokio::test]
+    async fn consent_lifecycle_covers_grant_missing_scope_expiry_and_revoke() {
+        let service = ConsentManagementServiceImpl::default();
+        let granted = service.grant_consent(Request::new(grant("u1", 0))).await.unwrap().into_inner().consent.unwrap();
+        assert!(service.evaluate_consent(Request::new(evaluate("u1"))).await.unwrap().into_inner().allowed);
+
+        let mut missing = evaluate("u1"); missing.required_scopes.push("contacts.read".into());
+        let missing = service.evaluate_consent(Request::new(missing)).await.unwrap().into_inner();
+        assert!(!missing.allowed);
+        assert_eq!(missing.missing_scopes, ["contacts.read"]);
+
+        service.grant_consent(Request::new(grant("expired-user", now_ms() - 1))).await.unwrap();
+        let expired = service.evaluate_consent(Request::new(evaluate("expired-user"))).await.unwrap().into_inner();
+        assert!(!expired.allowed);
+        assert_eq!(expired.failure_reason, "no active consent");
+
+        service.revoke_consent(Request::new(RevokeConsentRequest { consent_id: granted.consent_id, reason: "user request".into(), ..Default::default() })).await.unwrap();
+        assert!(!service.evaluate_consent(Request::new(evaluate("u1"))).await.unwrap().into_inner().allowed);
+    }
+
+    #[tokio::test]
+    async fn consent_listing_filters_owner_type_and_user() {
+        let service = ConsentManagementServiceImpl::default();
+        service.grant_consent(Request::new(grant("u1", 0))).await.unwrap();
+        let mut platform = grant("u1", 0); platform.owner_type = ConsentOwnerType::Platform as i32; platform.owner_id = "tektalk".into();
+        service.grant_consent(Request::new(platform)).await.unwrap();
+        service.grant_consent(Request::new(grant("u2", 0))).await.unwrap();
+        let listed = service.list_consents(Request::new(ListConsentsRequest { user_id: "u1".into(), owner_type: ConsentOwnerType::Platform as i32, ..Default::default() })).await.unwrap().into_inner();
+        assert_eq!(listed.consents.len(), 1);
+        assert_eq!(listed.consents[0].owner_id, "tektalk");
+    }
 }

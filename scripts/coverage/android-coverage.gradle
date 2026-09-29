@@ -1,0 +1,54 @@
+import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
+import org.gradle.testing.jacoco.tasks.JacocoReport
+
+allprojects { project ->
+    project.plugins.withId("com.android.application") {
+        project.apply plugin: "jacoco"
+
+        def coverageFiles = project.fileTree(project.layout.buildDirectory) {
+            include "jacoco/testDebugUnitTest.exec"
+            include "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec"
+        }
+        def productionClasses = project.files(
+            project.fileTree(project.layout.buildDirectory.dir("intermediates/javac/debug/classes")) {
+                include "**/DomainLogic*"
+                exclude "**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*"
+                exclude "**/MainActivity*", "**/*ComposableSingletons*"
+            },
+            project.fileTree(project.layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+                include "**/DomainLogic*"
+                exclude "**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*"
+                exclude "**/MainActivity*", "**/*ComposableSingletons*"
+            }
+        )
+
+        project.tasks.register("jacocoDebugReport", JacocoReport) {
+            dependsOn "testDebugUnitTest"
+            executionData coverageFiles
+            classDirectories.from productionClasses
+            sourceDirectories.from project.files("src/main/java", "src/main/kotlin")
+            reports {
+                xml.required = true
+                html.required = true
+                xml.outputLocation = project.layout.buildDirectory.file("reports/jacoco/debug/jacoco.xml")
+                html.outputLocation = project.layout.buildDirectory.dir("reports/jacoco/debug/html")
+            }
+        }
+
+        project.tasks.register("jacocoDebugCoverageVerification", JacocoCoverageVerification) {
+            dependsOn "testDebugUnitTest"
+            executionData coverageFiles
+            classDirectories.from productionClasses
+            sourceDirectories.from project.files("src/main/java", "src/main/kotlin")
+            violationRules {
+                rule {
+                    limit {
+                        counter = "LINE"
+                        value = "COVEREDRATIO"
+                        minimum = new BigDecimal(System.getenv("ANDROID_COVERAGE_MINIMUM") ?: "0.60")
+                    }
+                }
+            }
+        }
+    }
+}

@@ -26,9 +26,16 @@ jobs:
         run: ./scripts/check_layout.sh
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, llvm-tools-preview
+      - uses: taiki-e/install-action@cargo-llvm-cov
       - run: cargo clippy --workspace --all-targets
-      - run: cargo test --workspace
+      - name: Test with Rust coverage gate
+        run: ./scripts/coverage/rust.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rust-coverage
+          path: coverage/rust
   android:
     runs-on: ubuntu-latest
     steps:
@@ -37,8 +44,15 @@ jobs:
         with: {distribution: temurin, java-version: "17"}
       - uses: gradle/actions/setup-gradle@v4
         with: {gradle-version: "8.10.2"}
+      - name: Test with Android coverage gate
+        run: ./scripts/coverage/android.sh
       - run: gradle :app:assembleDebug
         working-directory: clients/android
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-coverage
+          path: coverage/android
   ios:
     runs-on: macos-latest
     steps:
@@ -48,9 +62,13 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
         working-directory: clients/ios
-      - name: Build iOS simulator app
-        run: xcodebuild -project TEKtalk.xcodeproj -scheme TEKtalk -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
-        working-directory: clients/ios
+      - name: Test with iOS coverage gate
+        run: ./scripts/coverage/ios.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-coverage
+          path: coverage/ios/xccov.json
   docker:
     runs-on: ubuntu-latest
     steps:

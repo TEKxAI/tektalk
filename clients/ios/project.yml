@@ -11,3 +11,22 @@ targets:
         SWIFT_VERSION: "5.10"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: true
+  TEKtalkTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [TEKtalkTests]
+    dependencies:
+      - target: TEKtalk
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: vn.tektalk.ios.tests
+        SWIFT_VERSION: "5.10"
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  TEKtalk:
+    build:
+      targets:
+        TEKtalk: all
+        TEKtalkTests: [test]
+    test:
+      targets: [TEKtalkTests]
