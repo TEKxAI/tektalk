@@ -37,7 +37,7 @@ private struct ChatRoom: View {
     @MainActor private func send() async {guard let conversation=UUID(uuidString:conversation),let recipient=UUID(uuidString:recipient)else{return};let text=draft;draft="";do{let response=try await APIClient().send(token:tokens.access_token,conversation:conversation,recipient:recipient,text:text);messages.append(response.message)}catch{status=error.localizedDescription}}
 }
 
-private struct Placeholder: View {let title:String;let detail:String;var body:some View{NavigationStack{ContentUnavailableView(title,systemImage:"sparkles",description:Text(detail)).navigationTitle(title)}}}
+private struct Placeholder: View {let title:String;let detail:String;var body:some View{NavigationStack{VStack(spacing:14){Image(systemName:"sparkles").font(.system(size:42)).foregroundStyle(.blue);Text(title).font(.title2.bold());Text(detail).multilineTextAlignment(.center).foregroundStyle(.secondary)}.padding(28).navigationTitle(title)}}}
 private struct ProfileView: View {let tokens:Tokens;let logout:()->Void;var body:some View{NavigationStack{Form{Section("Core Platform"){LabeledContent("User",value:tokens.user_id.uuidString);LabeledContent("Device",value:tokens.device_id.uuidString)};Section{Button("Đăng xuất",role:.destructive,action:logout)}}.navigationTitle("Tôi")}}}
 
 @main struct TEKtalkApp: App { var body: some Scene { WindowGroup { ContentView() } } }
