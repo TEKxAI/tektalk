@@ -12,12 +12,12 @@ allprojects { project ->
         def productionClasses = project.files(
             project.fileTree(project.layout.buildDirectory.dir("intermediates/javac/debug/classes")) {
                 include "**/DomainLogic*"
-                exclude "**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*"
+                exclude "**/R.class", "**/BuildConfig.*", "**/Manifest*.*"
                 exclude "**/MainActivity*", "**/*ComposableSingletons*"
             },
             project.fileTree(project.layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
                 include "**/DomainLogic*"
-                exclude "**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*"
+                exclude "**/R.class", "**/BuildConfig.*", "**/Manifest*.*"
                 exclude "**/MainActivity*", "**/*ComposableSingletons*"
             }
         )
