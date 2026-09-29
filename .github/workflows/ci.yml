@@ -39,6 +39,18 @@ jobs:
         with: {gradle-version: "8.10.2"}
       - run: gradle :app:assembleDebug
         working-directory: clients/android
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+        working-directory: clients/ios
+      - name: Build iOS simulator app
+        run: xcodebuild -project TEKtalk.xcodeproj -scheme TEKtalk -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
+        working-directory: clients/ios
   docker:
     runs-on: ubuntu-latest
     steps:
