@@ -13,11 +13,8 @@ jobs:
         run: |
           jq --exit-status . plugins/plugin-manifest.schema.json >/dev/null
           for manifest in plugins/*/manifest.json; do jq --exit-status . "$manifest" >/dev/null; done
-      - name: Build and test shared C++ core
-        run: |
-          cmake -S core -B build/core -DCMAKE_BUILD_TYPE=Release
-          cmake --build build/core --parallel
-          ctest --test-dir build/core --output-on-failure
+      - name: Validate Rust client-core ABI surface
+        run: ./scripts/check_layout.sh
   rust:
     runs-on: ubuntu-latest
     steps:
@@ -29,6 +26,8 @@ jobs:
           components: clippy, llvm-tools-preview
       - uses: taiki-e/install-action@cargo-llvm-cov
       - run: cargo clippy --workspace --all-targets
+      - name: Build mobile client-core artifacts
+        run: cargo build --release -p tektalk-client-core
       - name: Test with Rust coverage gate
         run: ./scripts/coverage/rust.sh
       - uses: actions/upload-artifact@v4

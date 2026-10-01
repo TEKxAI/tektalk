@@ -52,7 +52,7 @@ flowchart TB
     Runtime --> Message["Message"]
     Runtime --> AI["AI"]
     Runtime --> Me["Me"]
-    Runtime --> Core["C++ shared core"]
+    Runtime --> Core["Rust shared core"]
     Runtime --> Broker["Capability broker"]
     Broker --> Native["Swift / Kotlin SDK adapters"]
 ```
@@ -61,7 +61,7 @@ The registry distributes a signed catalog. Artifacts are immutable and content-a
 
 ## Shared core
 
-C++20 owns deterministic cross-platform behavior: protocol/session state, message state machines, retry policy, sync reconciliation, repository interfaces and media chunking. A stable C ABI is exposed to Objective-C++/Swift and JNI/Kotlin. OS networking, secure storage, background execution, camera, location and notifications remain native adapters.
+Rust owns deterministic cross-platform behavior: protocol/session state, message state machines, retry policy, sync reconciliation, repository interfaces and media chunking. A stable C ABI is imported by Swift and a thin JNI/Kotlin adapter. OS networking, secure storage, background execution, camera, location and notifications remain native adapters. WebRTC and codec implementations can remain isolated C/C++ dependencies; they do not own application state or cross the public core boundary directly.
 
 ## Capability security
 

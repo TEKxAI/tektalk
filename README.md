@@ -37,7 +37,7 @@ flowchart TB
 
 The original Rust edge remains available for the first vertical slice. Account, OTT chat, session management and consent management also run as independent gRPC processes and containers, providing an executable migration path to the target microservice architecture. See `docs/architecture.md` and `protocol/mtproto-2.0.md`.
 
-The target architecture uses domain-owned microservices with internal gRPC/Protobuf contracts, a native host with remotely delivered Valdi plugins, and a C++20 shared core for deterministic cross-platform logic. See `docs/target-architecture.md`, `services/README.md`, `contracts/README.md`, `core/README.md`, and `plugins/README.md`.
+The target architecture uses domain-owned microservices with internal gRPC/Protobuf contracts, a native host with remotely delivered Valdi plugins, and a Rust shared core with a stable C ABI for deterministic cross-platform logic. See `docs/target-architecture.md`, `services/README.md`, `contracts/README.md`, `core/README.md`, and `plugins/README.md`.
 
 ## Quick start
 
@@ -68,7 +68,7 @@ The realtime protocol uses the MTProto 2.0 established-session envelope, SHA-256
 - `server/` Rust HTTPS and realtime service
 - `services/` target microservice boundaries and extraction plan
 - `contracts/` versioned internal gRPC/Protobuf APIs
-- `core/` shared C++20 session, sync, networking and storage foundation
+- `core/` shared Rust session, sync, networking and storage foundation with a stable C ABI
 - `plugins/` signed Valdi plugin manifests and delivery contract
 - `protocol/mtproto-2.0.md` normative wire specification
 - `clients/android/` Kotlin client core and Compose sample
