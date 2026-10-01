@@ -1,6 +1,7 @@
 FROM rust:1.98-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.toml
+COPY core core
 COPY server server
 COPY services services
 COPY contracts contracts
