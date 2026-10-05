@@ -7,6 +7,7 @@ extern "C" {
 #endif
 
 typedef struct tektalk_session tektalk_session;
+typedef struct tektalk_snowflake tektalk_snowflake;
 
 enum tektalk_accept_result {
   TEKTALK_ACCEPTED = 0,
@@ -20,6 +21,18 @@ int32_t tektalk_session_next_content_sequence(tektalk_session* session);
 enum tektalk_accept_result tektalk_session_accept_message_id(
     tektalk_session* session,
     int64_t message_id,
+    int client_to_server);
+
+/* 41-bit time, 10-bit assigned node, 12-bit sequence. Returns NULL for an
+ * invalid node and -1 if generation fails (for example, clock regression). */
+tektalk_snowflake* tektalk_snowflake_create(uint16_t node_id);
+void tektalk_snowflake_destroy(tektalk_snowflake* generator);
+int64_t tektalk_snowflake_next(tektalk_snowflake* generator);
+
+/* Generates a monotonically increasing MTProto 2.0 wire message ID. This is
+ * intentionally distinct from a persisted Snowflake message ID. */
+int64_t tektalk_session_next_mtproto_message_id(
+    tektalk_session* session,
     int client_to_server);
 
 #ifdef __cplusplus

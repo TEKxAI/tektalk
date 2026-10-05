@@ -9,6 +9,7 @@ pub struct Config {
     pub jwt_secret: String,
     pub otp_hmac_secret: String,
     pub otp_dev_echo: bool,
+    pub snowflake_node_id: u16,
 }
 
 impl Config {
@@ -20,6 +21,7 @@ impl Config {
             jwt_secret: required_secret("JWT_SECRET")?,
             otp_hmac_secret: required_secret("OTP_HMAC_SECRET")?,
             otp_dev_echo: env::var("OTP_DEV_ECHO").as_deref() == Ok("true"),
+            snowflake_node_id: env::var("SNOWFLAKE_NODE_ID").unwrap_or_else(|_| "0".into()).parse().context("SNOWFLAKE_NODE_ID must be 0..1023")?,
         })
     }
 }

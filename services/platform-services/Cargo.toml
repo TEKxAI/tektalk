@@ -10,6 +10,7 @@ argon2 = "0.5"
 chrono = "0.4"
 dashmap = "6"
 tektalk-contracts = { path = "../contracts-rust" }
+tektalk-client-core = { path = "../../core" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
 tonic = "0.12"
 tracing = "0.1"

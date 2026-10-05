@@ -27,7 +27,8 @@ On a Linux host with Docker Compose:
 git clone https://github.com/TEKxAI/tektalk.git
 cd tektalk
 cp .env.example .env
-# Replace secrets and set OTP_DEV_ECHO=false.
+# Replace secrets, set OTP_DEV_ECHO=false, and allocate a unique
+# SNOWFLAKE_NODE_ID (0..1023) to every message-writer replica.
 docker compose up --build -d
 curl --fail http://127.0.0.1:8080/healthz
 ```

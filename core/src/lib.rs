@@ -3,6 +3,9 @@
 //! Swift and Kotlin/JNI consume the stable C ABI declared in
 //! `include/tektalk/ffi.h`; Rust types and ownership stay inside this crate.
 
+pub mod id;
+pub mod mtproto;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Direction {
     ClientToServer,
@@ -71,13 +74,54 @@ impl SessionState {
 #[repr(C)]
 pub struct TektalkSession {
     state: SessionState,
+    client_message_ids: mtproto::MessageIdGenerator,
+    server_message_ids: mtproto::MessageIdGenerator,
+}
+
+#[repr(C)]
+pub struct TektalkSnowflake {
+    generator: id::SnowflakeGenerator,
 }
 
 #[no_mangle]
 pub extern "C" fn tektalk_session_create(session_id: i64) -> *mut TektalkSession {
     Box::into_raw(Box::new(TektalkSession {
         state: SessionState::new(session_id),
+        client_message_ids: mtproto::MessageIdGenerator::new(mtproto::Direction::ClientToServer),
+        server_message_ids: mtproto::MessageIdGenerator::new(mtproto::Direction::ServerToClient),
     }))
+}
+
+#[no_mangle]
+pub extern "C" fn tektalk_snowflake_create(node_id: u16) -> *mut TektalkSnowflake {
+    let Ok(generator) = id::SnowflakeGenerator::new(node_id) else {
+        return std::ptr::null_mut();
+    };
+    Box::into_raw(Box::new(TektalkSnowflake { generator }))
+}
+
+/// # Safety
+///
+/// A non-null pointer must be a uniquely owned live handle returned by
+/// [`tektalk_snowflake_create`].
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_snowflake_destroy(generator: *mut TektalkSnowflake) {
+    if !generator.is_null() {
+        // SAFETY: Required by the public function contract.
+        drop(unsafe { Box::from_raw(generator) });
+    }
+}
+
+/// # Safety
+///
+/// A non-null pointer must be a live handle returned by
+/// [`tektalk_snowflake_create`]. Access must be serialized by the caller.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_snowflake_next(generator: *mut TektalkSnowflake) -> i64 {
+    // SAFETY: Required by the public function contract. Null is handled.
+    unsafe { generator.as_ref() }
+        .and_then(|generator| generator.generator.next_id().ok())
+        .unwrap_or(-1)
 }
 
 /// Releases a session allocated by [`tektalk_session_create`].
@@ -139,6 +183,27 @@ pub unsafe extern "C" fn tektalk_session_accept_message_id(
         Direction::ServerToClient
     };
     session.state.accept_message_id(message_id, direction)
+}
+
+/// Generates a Telegram-compatible MTProto 2.0 wire message ID.
+///
+/// # Safety
+///
+/// A non-null `session` must be a live handle returned by
+/// [`tektalk_session_create`]. Access to a handle must be serialized.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_session_next_mtproto_message_id(
+    session: *mut TektalkSession,
+    client_to_server: i32,
+) -> i64 {
+    // SAFETY: Required by the public function contract. Null is handled.
+    let Some(session) = (unsafe { session.as_ref() }) else { return -1; };
+    let generator = if client_to_server != 0 {
+        &session.client_message_ids
+    } else {
+        &session.server_message_ids
+    };
+    generator.next_id().unwrap_or(-1)
 }
 
 #[cfg(test)]
@@ -256,5 +321,21 @@ mod tests {
         assert_eq!(TektalkAcceptResult::Accepted as i32, 0);
         assert_eq!(TektalkAcceptResult::InvalidParity as i32, 1);
         assert_eq!(TektalkAcceptResult::Replayed as i32, 2);
+    }
+
+    #[test]
+    fn ffi_generators_enforce_their_distinct_layouts() {
+        let snowflake = tektalk_snowflake_create(17);
+        let session = tektalk_session_create(1);
+        unsafe {
+            let persisted = tektalk_snowflake_next(snowflake);
+            assert_eq!(id::SnowflakeGenerator::decode(persisted).node_id, 17);
+            let client_wire = tektalk_session_next_mtproto_message_id(session, 1);
+            let server_wire = tektalk_session_next_mtproto_message_id(session, 0);
+            assert_eq!(client_wire.rem_euclid(4), 0);
+            assert_eq!(server_wire.rem_euclid(4), 1);
+            tektalk_snowflake_destroy(snowflake);
+            tektalk_session_destroy(session);
+        }
     }
 }

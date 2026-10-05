@@ -6,9 +6,9 @@ TEKtalk is a reusable technology-learning template. The selection rule is pragma
 
 | Layer | Selected pattern | TEKtalk implementation direction | Priority |
 |---|---|---|---|
-| Cryptography | MTProto 2.0 message key, directional SHA-256 KDF, AES-256-IGE and authenticated padding | Implemented in Rust and Android; complete and cross-test iOS | P0 |
+| Cryptography | MTProto 2.0 message key, directional SHA-256 KDF, AES-256-IGE and authenticated padding | One Rust Core implementation consumed through native bindings | P0 |
 | Session | Stable logical session independent of a physical connection | Persist session identity and resume after reconnect | P0 |
-| Delivery | Monotonic message IDs, sequence numbers, ACK, resend and deduplication | Add explicit service messages and a bounded resend queue | P0 |
+| Delivery | Snowflake persisted IDs; MTProto time/parity IDs; sequence numbers, ACK, resend and deduplication | Shared generators implemented; add explicit service messages and a bounded resend queue | P0 |
 | Batching | Message containers and acknowledgements for multiple messages | Add size/time-bounded containers after single-message correctness | P1 |
 | Transport | Encryption envelope separated from WebSocket, TCP or QUIC carrier | Keep WSS default; provide adapters behind one interface | P1 |
 | Data model | Local-first message database and server reconciliation | Introduce repositories, optimistic send states and gap recovery | P0 |

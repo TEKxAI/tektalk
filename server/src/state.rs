@@ -2,6 +2,7 @@ use dashmap::DashMap;
 use sqlx::PgPool;
 use std::{sync::Arc, time::Instant};
 use uuid::Uuid;
+use tektalk_client_core::id::SnowflakeGenerator;
 
 use crate::{config::Config, realtime::ClientHandle};
 use x25519_dalek::StaticSecret;
@@ -13,6 +14,7 @@ pub struct AppState {
     pub redis: redis::Client,
     pub online: Arc<DashMap<Uuid, Vec<ClientHandle>>>,
     pub tickets: Arc<DashMap<String, Ticket>>,
+    pub message_ids: Arc<SnowflakeGenerator>,
 }
 
 #[derive(Clone)]

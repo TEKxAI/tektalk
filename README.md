@@ -20,6 +20,7 @@ The selected protocol, client, server, sync, delivery and media patterns are tra
 - Docker Compose local dependencies, Kubernetes manifests, OpenTelemetry hooks, and CI
 - Independent gRPC services for account, OTT chat, L0/L1/L2 sessions, and consent
 - Clean-room native registration, login, device verification and direct text chat UI for Android and iOS
+- Shared Rust Core for Snowflake IDs, MTProto message IDs, envelope cryptography and transport framing
 
 ## Architecture
 

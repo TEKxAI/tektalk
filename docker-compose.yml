@@ -65,6 +65,7 @@ services:
       REDIS_URL: redis://redis:6379
       SCYLLA_NODES: scylla:9042
       KAFKA_BROKERS: redpanda:9092
+      SNOWFLAKE_NODE_ID: 0
     ports: ["8080:8080"]
     depends_on:
       postgres: {condition: service_healthy}
@@ -99,6 +100,7 @@ services:
     environment:
       SERVICE_BIND: 0.0.0.0:50053
       RUST_LOG: tektalk_platform_services=info
+      SNOWFLAKE_NODE_ID: 1
     ports: ["50053:50053"]
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "50053"]

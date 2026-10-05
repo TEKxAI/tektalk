@@ -35,6 +35,8 @@ openssl rand -hex 32
 
 Use the first output for `JWT_SECRET` and the second for `OTP_HMAC_SECRET`. Keep `OTP_DEV_ECHO=true` only for local learning; it exposes OTP values in development responses.
 
+`SNOWFLAKE_NODE_ID` identifies a message-writer process. Local Compose reserves node `0` for the edge server and node `1` for the Chat microservice. Never run two active writers with the same node ID in production.
+
 ## 3. Run the complete backend
 
 The simplest path generates local secrets, builds the Rust server, starts all dependencies, waits for health checks, and registers a smoke-test account:
@@ -102,7 +104,7 @@ Expected result: the layout guard reports success, Rust tests pass, the Android 
 
 1. Read `docs/architecture.md` for service boundaries.
 2. Trace HTTPS authentication using `docs/auth-flows.md` and `docs/api.md`.
-3. Study `protocol/mtproto-2.0.md` together with `server/src/mtproto.rs`.
+3. Study `protocol/mtproto-2.0.md` together with `core/src/mtproto.rs`.
 4. Compare Android and iOS protocol adapters.
 5. Use `docs/tektalk-engineering.md` to study the selected client, server, delivery, sync and media patterns.
 6. Deploy the template with `docs/deployment.md`.

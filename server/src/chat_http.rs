@@ -17,7 +17,7 @@ pub async fn send(State(state):State<AppState>,headers:HeaderMap,Json(request):J
     if request.recipient_id==claims.sub{return Err(AppError::Invalid("recipient must be another account"));}
     let exists=sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM users WHERE id=$1 AND disabled_at IS NULL)").bind(request.recipient_id).fetch_one(&state.db).await?;
     if !exists{return Err(AppError::Invalid("recipient does not exist"));}
-    let id=crate::realtime::snowflake();
+    let id=state.message_ids.next_id().map_err(|_|AppError::Invalid("message id generation failed"))?;
     let inserted=sqlx::query("INSERT INTO messages(id,conversation_id,sender_id,recipient_id,client_message_id,body,created_at) VALUES($1,$2,$3,$4,$5,$6,now()) ON CONFLICT(sender_id,client_message_id) DO NOTHING").bind(id).bind(request.conversation_id).bind(claims.sub).bind(request.recipient_id).bind(request.client_message_id).bind(text).execute(&state.db).await?.rows_affected()==1;
     let message=sqlx::query_as::<_,ChatMessage>("SELECT id,conversation_id,sender_id,recipient_id,client_message_id,body,created_at FROM messages WHERE sender_id=$1 AND client_message_id=$2").bind(claims.sub).bind(request.client_message_id).fetch_one(&state.db).await?;
     Ok(Json(SendMessageResponse{message,deduplicated:!inserted}))

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::{atomic::{AtomicI64, Ordering}, Arc}};
+use std::{collections::HashSet, sync::Arc};
 
 use argon2::{password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString}, Argon2};
 use chrono::Utc;
@@ -19,6 +19,7 @@ use tektalk_contracts::v1::{
 };
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
+use tektalk_client_core::id::SnowflakeGenerator;
 
 fn now_ms() -> i64 { Utc::now().timestamp_millis() }
 fn required(value: &str, name: &'static str) -> Result<(), Status> {
@@ -48,7 +49,12 @@ impl AccountService for AccountServiceImpl {
     }
 }
 
-#[derive(Default)] pub struct ChatServiceImpl { messages:DashMap<String,Vec<ChatMessage>>,dedup:DashMap<String,i64>,next_id:AtomicI64 }
+pub struct ChatServiceImpl { messages:DashMap<String,Vec<ChatMessage>>,dedup:DashMap<String,i64>,message_ids:Arc<SnowflakeGenerator> }
+
+impl ChatServiceImpl {
+    pub fn new(node_id:u16)->Result<Self,tektalk_client_core::id::IdError>{Ok(Self{messages:DashMap::new(),dedup:DashMap::new(),message_ids:Arc::new(SnowflakeGenerator::new(node_id)?)})}
+}
+impl Default for ChatServiceImpl { fn default()->Self{Self::new(1).expect("default Snowflake node is valid")} }
 
 #[tonic::async_trait]
 impl ChatService for ChatServiceImpl {
@@ -57,7 +63,7 @@ impl ChatService for ChatServiceImpl {
         let context=r.context.as_ref().ok_or_else(||Status::unauthenticated("request context is required"))?;required(&context.user_id,"user_id")?;
         validate_message(&r)?;let dedup_key=format!("{}:{}",context.user_id,r.client_message_id);
         if let Some(id)=self.dedup.get(&dedup_key){return Ok(Response::new(SendMessageResponse{client_message_id:r.client_message_id,server_message_id:*id,committed_at_unix_ms:now_ms(),deduplicated:true}));}
-        let id=self.next_id.fetch_add(1,Ordering::Relaxed)+1;let committed=now_ms();
+        let id=self.message_ids.next_id().map_err(|_|Status::unavailable("message id generation failed"))?;let committed=now_ms();
         self.messages.entry(r.conversation_id.clone()).or_default().push(ChatMessage{server_message_id:id,conversation_id:r.conversation_id,sender_id:context.user_id.clone(),kind:r.kind,text:r.text,media:r.media,sticker_id:r.sticker_id,committed_at_unix_ms:committed});self.dedup.insert(dedup_key,id);
         Ok(Response::new(SendMessageResponse{client_message_id:r.client_message_id,server_message_id:id,committed_at_unix_ms:committed,deduplicated:false}))
     }
