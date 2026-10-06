@@ -15,7 +15,7 @@ The selected protocol, client, server, sync, delivery and media patterns are tra
 - Short-lived access tokens plus rotating refresh tokens
 - HTTPS REST for identity/bootstrap and encrypted WebSocket binary frames for realtime chat
 - One-to-one message send, acknowledgement, deduplication, ordering, and history
-- Native Kotlin/Android and Swift/iOS sample clients
+- Native Android, iOS, macOS, and Windows clients with a shared Rust Core
 - PostgreSQL migrations, Scylla schema, Redis/Kafka integration points
 - Docker Compose local dependencies, Kubernetes manifests, OpenTelemetry hooks, and CI
 - Independent gRPC services for account, OTT chat, L0/L1/L2 sessions, and consent
@@ -27,7 +27,7 @@ The selected protocol, client, server, sync, delivery and media patterns are tra
 
 ```mermaid
 flowchart TB
-    M["iOS / Android"] -->|"HTTPS: identity + bootstrap"| E["Rust edge/API"]
+    M["iOS / Android / macOS / Windows"] -->|"HTTPS: identity + bootstrap"| E["Rust edge/API"]
     M -->|"WSS: encrypted binary frames"| G["Realtime gateway"]
     E --> I["Identity domain"]
     G --> C["Chat domain"]
@@ -75,6 +75,8 @@ The realtime protocol uses the MTProto 2.0 established-session envelope, SHA-256
 - `protocol/mtproto-2.0.md` normative wire specification
 - `clients/android/` Kotlin client core and Compose sample
 - `clients/ios/` Swift client core and SwiftUI sample
+- `clients/macos/` native SwiftUI/AppKit desktop client
+- `clients/windows/` native C++/WinRT and WinUI 3 desktop client
 - `infra/` database, Kubernetes, and observability configuration
 - `docs/` architecture, authentication flows, runbook, and threat model
 

@@ -11,6 +11,25 @@ targets:
         SWIFT_VERSION: "5.10"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: true
+        LIBRARY_SEARCH_PATHS: "$(inherited) $(SRCROOT)/RustCore"
+        OTHER_LDFLAGS: "$(inherited) -ltektalk_client_core -framework Security"
+    preBuildScripts:
+      - name: Build shared Rust Core
+        script: |
+          set -eu
+          ROOT="$SRCROOT/../.."
+          if [ "$PLATFORM_NAME" = "iphonesimulator" ]; then
+            case " $ARCHS " in
+              *" arm64 "*) TARGET="aarch64-apple-ios-sim" ;;
+              *) TARGET="x86_64-apple-ios" ;;
+            esac
+          else
+            TARGET="aarch64-apple-ios"
+          fi
+          rustup target add "$TARGET"
+          cargo build --manifest-path "$ROOT/Cargo.toml" --release -p tektalk-client-core --target "$TARGET"
+          mkdir -p "$SRCROOT/RustCore"
+          cp "$ROOT/target/$TARGET/release/libtektalk_client_core.a" "$SRCROOT/RustCore/"
   TEKtalkTests:
     type: bundle.unit-test
     platform: iOS

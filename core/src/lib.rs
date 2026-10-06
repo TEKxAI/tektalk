@@ -7,6 +7,9 @@ pub mod id;
 pub mod mtproto;
 pub mod plugin;
 
+#[cfg(target_os = "android")]
+mod android_jni;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Direction {
     ClientToServer,

@@ -1,0 +1,44 @@
+name: TEKtalkMac
+options:
+  bundleIdPrefix: vn.tektalk
+  deploymentTarget:
+    macOS: "14.0"
+targets:
+  TEKtalkMac:
+    type: application
+    platform: macOS
+    sources: [TEKtalkMac]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: vn.tektalk.macos
+        SWIFT_VERSION: "5.10"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: true
+    postBuildScripts:
+      - name: Embed Rust Core
+        script: |
+          set -eu
+          SOURCE="$SRCROOT/Frameworks/libtektalk_client_core.dylib"
+          if [ -f "$SOURCE" ]; then
+            mkdir -p "$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
+            cp "$SOURCE" "$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH/"
+          fi
+  TEKtalkMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [TEKtalkMacTests]
+    dependencies:
+      - target: TEKtalkMac
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: vn.tektalk.macos.tests
+        SWIFT_VERSION: "5.10"
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  TEKtalkMac:
+    build:
+      targets:
+        TEKtalkMac: all
+        TEKtalkMacTests: [test]
+    test:
+      targets: [TEKtalkMacTests]

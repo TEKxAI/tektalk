@@ -1,0 +1,1 @@
+namespace TEKtalk { runtimeclass App : Microsoft.UI.Xaml.Application { App(); } }

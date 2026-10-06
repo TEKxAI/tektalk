@@ -37,6 +37,6 @@ private struct ChatRoom: View {
 }
 
 private struct Placeholder: View {let title:String;let detail:String;var body:some View{NavigationStack{VStack(spacing:14){Image(systemName:"sparkles").font(.system(size:42)).foregroundStyle(.blue);Text(title).font(.title2.bold());Text(detail).multilineTextAlignment(.center).foregroundStyle(.secondary)}.padding(28).navigationTitle(title)}}}
-private struct ProfileView: View {let tokens:Tokens;let logout:()->Void;var body:some View{NavigationStack{Form{Section("Core Platform"){LabeledContent("User",value:tokens.user_id.uuidString);LabeledContent("Device",value:tokens.device_id.uuidString)};Section{Button("Đăng xuất",role:.destructive,action:logout)}}.navigationTitle("Tôi")}}}
+private struct ProfileView: View {let tokens:Tokens;let logout:()->Void;var body:some View{NavigationStack{Form{Section("Core Platform"){LabeledContent("User",value:tokens.user_id.uuidString);LabeledContent("Device",value:tokens.device_id.uuidString);LabeledContent("Rust Core",value:NativeCore.shared.isAvailable ? "Connected" : "Development fallback")};Section{Button("Đăng xuất",role:.destructive,action:logout)}}.navigationTitle("Tôi")}}}
 
 @main struct TEKtalkApp: App { var body: some Scene { WindowGroup { ContentView() } } }

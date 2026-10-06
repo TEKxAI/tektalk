@@ -1,0 +1,36 @@
+import Foundation
+
+actor APIClient {
+    private let baseURL: URL
+    init(baseURL: URL = URL(string: ProcessInfo.processInfo.environment["TEKTALK_API_BASE_URL"] ?? "http://localhost:8080")!) { self.baseURL = baseURL }
+
+    private func post<I: Encodable, O: Decodable>(_ path: String, body: I, token: String? = nil) async throws -> O {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        request.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
+            throw APIError.server(String(data: data, encoding: .utf8) ?? "Server error")
+        }
+        return try JSONDecoder().decode(O.self, from: data)
+    }
+
+    func register(phone: String, name: String, password: String, question: String, answer: String) async throws -> Tokens {
+        try await post("v1/auth/register", body: RegisterRequest(phone: phone, display_name: name, password: password, security_question: question, security_answer: answer, device_name: Host.current().localizedName ?? "Mac"))
+    }
+    func login(phone: String, password: String) async throws -> LoginResponse {
+        try await post("v1/auth/login", body: LoginRequest(phone: phone, password: password, device_id: nil, device_name: Host.current().localizedName ?? "Mac"))
+    }
+    func verify(challenge: UUID, answer: String) async throws -> Tokens { try await post("v1/auth/device/verify", body: VerifyDeviceRequest(challenge_id: challenge, answer: answer)) }
+    func history(token: String, conversation: UUID) async throws -> [ChatMessage] { try await post("v1/chat/messages/history", body: HistoryRequest(conversation_id: conversation, before_message_id: nil, limit: 50), token: token) }
+    func send(token: String, conversation: UUID, recipient: UUID, text: String) async throws -> SendMessageResponse { try await post("v1/chat/messages/send", body: SendMessageRequest(conversation_id: conversation, recipient_id: recipient, client_message_id: UUID(), text: text), token: token) }
+}
+
+enum APIError: LocalizedError {
+    case server(String)
+    var errorDescription: String? {
+        switch self { case let .server(value): return value }
+    }
+}
