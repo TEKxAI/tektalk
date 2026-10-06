@@ -7,9 +7,9 @@ ApiClient::ApiClient(hstring base) : base_(std::move(base)) {}
 IAsyncOperation<JsonValue> ApiClient::Post(hstring const& path, JsonObject const& body, hstring const& token) {
     HttpRequestMessage request(HttpMethod::Post(), Windows::Foundation::Uri(base_ + path));
     HttpStringContent content(body.Stringify());
-    content.Headers().ContentType(Headers::HttpMediaTypeHeaderValue(L"application/json"));
+    content.Headers().ContentType(Windows::Web::Http::Headers::HttpMediaTypeHeaderValue(L"application/json"));
     request.Content(content);
-    if (!token.empty()) request.Headers().Authorization(Headers::HttpCredentialsHeaderValue(L"Bearer", token));
+    if (!token.empty()) request.Headers().Authorization(Windows::Web::Http::Headers::HttpCredentialsHeaderValue(L"Bearer", token));
     auto response = co_await http_.SendRequestAsync(request); auto text = co_await response.Content().ReadAsStringAsync();
     if (!response.IsSuccessStatusCode()) throw hresult_error(E_FAIL, text);
     co_return JsonValue::Parse(text);
