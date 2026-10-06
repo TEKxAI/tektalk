@@ -189,7 +189,7 @@ pub unsafe extern "C" fn tektalk_session_accept_message_id(
     session.state.accept_message_id(message_id, direction)
 }
 
-/// Generates a Telegram-compatible MTProto 2.0 wire message ID.
+/// Generates an MTProto 2.0-compliant wire message ID.
 ///
 /// # Safety
 ///
@@ -208,6 +208,30 @@ pub unsafe extern "C" fn tektalk_session_next_mtproto_message_id(
         &session.server_message_ids
     };
     generator.next_id().unwrap_or(-1)
+}
+
+/// Verifies SHA-256 and Ed25519 before a downloaded plugin may be loaded.
+///
+/// # Safety
+/// `bytes` must reference `length` readable bytes. The remaining pointers must
+/// reference 32, 64 and 32 readable bytes respectively.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_plugin_verify_artifact(
+    bytes: *const u8,
+    length: usize,
+    expected_sha256: *const u8,
+    signature: *const u8,
+    public_key: *const u8,
+) -> i32 {
+    if bytes.is_null() || expected_sha256.is_null() || signature.is_null() || public_key.is_null() {
+        return 0;
+    }
+    // SAFETY: buffer sizes are required by the public C ABI contract.
+    let artifact = unsafe { std::slice::from_raw_parts(bytes, length) };
+    let digest: &[u8; 32] = unsafe { std::slice::from_raw_parts(expected_sha256, 32) }.try_into().expect("fixed length");
+    let signature: &[u8; 64] = unsafe { std::slice::from_raw_parts(signature, 64) }.try_into().expect("fixed length");
+    let public_key: &[u8; 32] = unsafe { std::slice::from_raw_parts(public_key, 32) }.try_into().expect("fixed length");
+    if plugin::verify_artifact(artifact, digest, signature, public_key) { 1 } else { 0 }
 }
 
 #[cfg(test)]
@@ -325,6 +349,11 @@ mod tests {
         assert_eq!(TektalkAcceptResult::Accepted as i32, 0);
         assert_eq!(TektalkAcceptResult::InvalidParity as i32, 1);
         assert_eq!(TektalkAcceptResult::Replayed as i32, 2);
+    }
+
+    #[test]
+    fn ffi_rejects_null_plugin_artifact() {
+        assert_eq!(unsafe { tektalk_plugin_verify_artifact(ptr::null(), 0, ptr::null(), ptr::null(), ptr::null()) }, 0);
     }
 
     #[test]

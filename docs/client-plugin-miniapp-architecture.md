@@ -38,3 +38,25 @@ Every resolution checks host version, Rust Core ABI, Valdi runtime and plugin AP
 ## Rollout
 
 Rollout is deterministic by `hash(device_id, plugin_id) % 100`, giving stable cohorts across catalog refreshes. Recommended waves are internal, 1%, 5%, 25%, 50% and 100%. Crash-free sessions, render latency, memory, capability denials, message-send success and sync gaps drive automatic rollback.
+
+## Native desktop fallback
+
+The Windows and macOS applications remain native hosts. When Valdi has no
+supported desktop runtime, Message, AI and Me are native libraries distributed
+by the same signed catalog:
+
+| Host | Artifact | View returned by ABI |
+| --- | --- | --- |
+| Windows C++/WinRT | signed `.dll` | retained `IInspectable*` containing a WinUI `FrameworkElement` |
+| macOS SwiftUI/AppKit | signed `.dylib` | retained `NSView*` |
+
+Catalog resolution selects artifacts by platform, CPU architecture and
+`native-abi-1`. Hosts download into non-executable staging, ask Rust Core to
+verify SHA-256 and Ed25519, verify Authenticode or macOS code signing, perform a
+health probe, then activate atomically. The previous library stays available
+for rollback. A plugin is never loaded directly from the download directory.
+
+The desktop ABI exposes a JSON capability bridge instead of raw application
+objects. This preserves the same consent, entitlement and L0/L1/L2 checks used
+by Valdi. Message and Me also ship as bundled last-known-good libraries so a
+bad catalog cannot make the host unusable.

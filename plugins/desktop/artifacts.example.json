@@ -1,0 +1,24 @@
+[
+  {
+    "id": "tektalk.message",
+    "version": "0.2.0",
+    "platform": "windows",
+    "architecture": "x86_64",
+    "runtime": "native-abi-1",
+    "artifactKind": "dll",
+    "url": "https://plugins.tektalk.vn/tektalk.message/0.2.0/windows/x86_64/plugin.dll",
+    "sha256Base64": "REPLACE_AFTER_BUILD",
+    "signatureBase64": "REPLACE_IN_ISOLATED_SIGNING_PIPELINE"
+  },
+  {
+    "id": "tektalk.message",
+    "version": "0.2.0",
+    "platform": "macos",
+    "architecture": "arm64",
+    "runtime": "native-abi-1",
+    "artifactKind": "dylib",
+    "url": "https://plugins.tektalk.vn/tektalk.message/0.2.0/macos/arm64/plugin.dylib",
+    "sha256Base64": "REPLACE_AFTER_BUILD",
+    "signatureBase64": "REPLACE_IN_ISOLATED_SIGNING_PIPELINE"
+  }
+]

@@ -107,10 +107,17 @@ jobs:
         run: |
           xcodegen generate
           xcodebuild test -project TEKtalkMac.xcodeproj -scheme TEKtalkMac -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+      - name: Build native macOS tab plugins
+        run: ./scripts/build-desktop-plugins-macos.sh
       - uses: actions/upload-artifact@v4
         with:
           name: tektalk-macos-debug
           path: clients/macos/build/Build/Products/Debug/TEKtalkMac.app
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tektalk-macos-plugins
+          path: build/desktop-plugins/macos/*.dylib
           if-no-files-found: error
   windows:
     runs-on: windows-latest
@@ -131,10 +138,18 @@ jobs:
       - name: Build C++ WinUI 3 application
         shell: pwsh
         run: msbuild clients/windows/TEKtalk.Windows/TEKtalk.Windows.vcxproj /restore /m /p:Configuration=Release /p:Platform=x64
+      - name: Build native Windows tab plugins
+        shell: pwsh
+        run: ./scripts/build-desktop-plugins-windows.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: tektalk-windows
           path: clients/windows/TEKtalk.Windows/x64/Release/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tektalk-windows-plugins
+          path: plugins/desktop/windows/build/x64/Release/*.dll
           if-no-files-found: error
   docker:
     runs-on: ubuntu-latest

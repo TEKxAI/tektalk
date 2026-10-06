@@ -35,6 +35,13 @@ int64_t tektalk_session_next_mtproto_message_id(
     tektalk_session* session,
     int client_to_server);
 
+int32_t tektalk_plugin_verify_artifact(
+    const uint8_t* bytes,
+    uintptr_t length,
+    const uint8_t expected_sha256[32],
+    const uint8_t signature[64],
+    const uint8_t public_key[32]);
+
 #ifdef __cplusplus
 }
 #endif

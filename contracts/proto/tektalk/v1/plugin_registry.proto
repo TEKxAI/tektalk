@@ -38,6 +38,18 @@ message PluginDescriptor {
   string storage_namespace = 14;
   repeated string network_allowlist = 15;
   string signing_key_id = 16;
+  repeated PluginArtifact artifacts = 17;
+}
+
+message PluginArtifact {
+  string platform = 1;
+  string architecture = 2;
+  string runtime = 3;
+  string artifact_kind = 4;
+  string url = 5;
+  bytes sha256 = 6;
+  bytes signature = 7;
+  string signing_key_id = 8;
 }
 
 message ResolvePluginSetResponse {
