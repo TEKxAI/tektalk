@@ -1,9 +1,7 @@
 {
-  "schemaVersion": 1,
-  "id": "tektalk.me",
-  "version": "0.1.0",
-  "entryPoint": "MePlugin",
-  "minimumHostVersion": "0.1.0",
-  "capabilities": ["camera", "media-picker", "notifications", "secure-storage"],
+  "schemaVersion": 2, "id": "tektalk.me", "version": "0.2.0", "entryPoint": "MePlugin", "pluginType": "first_party_tab",
+  "minimumHostVersion": "0.2.0", "minimumCoreAbi": 2, "valdiRuntime": "1.1",
+  "capabilities": ["profile.read", "profile.write", "device.read", "consent.manage", "camera.capture", "notifications.manage"],
+  "networkAllowlist": [], "storageNamespace": "me", "trustTier": "first_party", "required": true, "rolloutPercentage": 100,
   "tab": {"titleKey": "tab.me", "icon": "person", "order": 2}
 }

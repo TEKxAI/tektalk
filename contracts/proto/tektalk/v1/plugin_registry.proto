@@ -7,6 +7,7 @@ import "tektalk/v1/common.proto";
 service PluginRegistryService {
   rpc ResolvePluginSet(ResolvePluginSetRequest) returns (ResolvePluginSetResponse);
   rpc ReportPluginHealth(ReportPluginHealthRequest) returns (ReportPluginHealthResponse);
+  rpc ResolveMiniApps(ResolveMiniAppsRequest) returns (ResolveMiniAppsResponse);
 }
 
 message ResolvePluginSetRequest {
@@ -15,6 +16,9 @@ message ResolvePluginSetRequest {
   string architecture = 3;
   string host_version = 4;
   string locale = 5;
+  uint32 core_abi = 6;
+  string valdi_runtime = 7;
+  string device_id = 8;
 }
 
 message PluginDescriptor {
@@ -28,6 +32,12 @@ message PluginDescriptor {
   repeated string capabilities = 8;
   uint32 tab_order = 9;
   bool required = 10;
+  uint32 minimum_core_abi = 11;
+  string valdi_runtime = 12;
+  string plugin_type = 13;
+  string storage_namespace = 14;
+  repeated string network_allowlist = 15;
+  string signing_key_id = 16;
 }
 
 message ResolvePluginSetResponse {
@@ -35,6 +45,8 @@ message ResolvePluginSetResponse {
   repeated PluginDescriptor plugins = 2;
   bytes catalog_signature = 3;
   int64 expires_at_unix_ms = 4;
+  bytes signed_catalog = 5;
+  string signing_key_id = 6;
 }
 
 message ReportPluginHealthRequest {
@@ -47,4 +59,21 @@ message ReportPluginHealthRequest {
 
 message ReportPluginHealthResponse {
   bool accepted = 1;
+}
+
+message ResolveMiniAppsRequest {
+  RequestContext context = 1;
+  string platform = 2;
+  string host_version = 3;
+  uint32 core_abi = 4;
+  string valdi_runtime = 5;
+}
+
+message ResolveMiniAppsResponse {
+  repeated PluginDescriptor mini_apps = 1;
+  string catalog_version = 2;
+  bytes signed_catalog = 3;
+  bytes catalog_signature = 4;
+  string signing_key_id = 5;
+  int64 expires_at_unix_ms = 6;
 }

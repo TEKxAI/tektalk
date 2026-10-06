@@ -15,10 +15,39 @@ data class PluginManifest(
     val id: String,
     val version: String,
     val entryPoint: String,
+    val pluginType: String,
     val minimumHostVersion: String,
+    val minimumCoreAbi: Int,
+    val valdiRuntime: String,
     val capabilities: Set<String>,
+    val networkAllowlist: Set<String>,
+    val storageNamespace: String,
+    val trustTier: String,
+    val required: Boolean,
+    val rolloutPercentage: Int,
     val tab: PluginTab,
 )
+
+enum class PluginState { DISCOVERED, DOWNLOADED, VERIFIED, STAGED, ACTIVE, DEGRADED, ROLLED_BACK }
+
+class PluginLifecycle {
+    var state: PluginState = PluginState.DISCOVERED
+        private set
+
+    fun transition(next: PluginState) {
+        val allowed = when (state) {
+            PluginState.DISCOVERED -> setOf(PluginState.DOWNLOADED)
+            PluginState.DOWNLOADED -> setOf(PluginState.VERIFIED)
+            PluginState.VERIFIED -> setOf(PluginState.STAGED)
+            PluginState.STAGED -> setOf(PluginState.ACTIVE, PluginState.ROLLED_BACK)
+            PluginState.ACTIVE -> setOf(PluginState.DEGRADED)
+            PluginState.DEGRADED -> setOf(PluginState.ROLLED_BACK, PluginState.ACTIVE)
+            PluginState.ROLLED_BACK -> emptySet()
+        }
+        require(next in allowed) { "invalid plugin transition: $state -> $next" }
+        state = next
+    }
+}
 
 interface PluginArtifactStore {
     suspend fun stage(pluginId: String, version: String, bytes: ByteArray): String

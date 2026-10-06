@@ -5,6 +5,7 @@ COPY core core
 COPY server server
 COPY services services
 COPY contracts contracts
+COPY plugins plugins
 COPY infra infra
 RUN cargo build --release -p tektalk-plugin-registry
 

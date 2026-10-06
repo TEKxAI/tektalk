@@ -11,10 +11,43 @@ struct PluginManifest: Codable, Sendable {
     let id: String
     let version: String
     let entryPoint: String
+    let pluginType: String
     let minimumHostVersion: String
+    let minimumCoreAbi: Int
+    let valdiRuntime: String
     let capabilities: Set<String>
+    let networkAllowlist: Set<String>
+    let storageNamespace: String
+    let trustTier: String
+    let required: Bool
+    let rolloutPercentage: Int
     let tab: PluginTab
 }
+
+enum PluginState: String, Sendable {
+    case discovered, downloaded, verified, staged, active, degraded, rolledBack
+}
+
+struct PluginLifecycle: Sendable {
+    private(set) var state: PluginState = .discovered
+
+    mutating func transition(to next: PluginState) throws {
+        let allowed: Set<PluginState>
+        switch state {
+        case .discovered: allowed = [.downloaded]
+        case .downloaded: allowed = [.verified]
+        case .verified: allowed = [.staged]
+        case .staged: allowed = [.active, .rolledBack]
+        case .active: allowed = [.degraded]
+        case .degraded: allowed = [.rolledBack, .active]
+        case .rolledBack: allowed = []
+        }
+        guard allowed.contains(next) else { throw PluginLifecycleError.invalidTransition(state, next) }
+        state = next
+    }
+}
+
+enum PluginLifecycleError: Error, Equatable { case invalidTransition(PluginState, PluginState) }
 
 protocol PluginArtifactStore: Sendable {
     func stage(pluginID: String, version: String, bytes: Data) async throws -> URL

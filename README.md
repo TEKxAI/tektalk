@@ -21,6 +21,7 @@ The selected protocol, client, server, sync, delivery and media patterns are tra
 - Independent gRPC services for account, OTT chat, L0/L1/L2 sessions, and consent
 - Clean-room native registration, login, device verification and direct text chat UI for Android and iOS
 - Shared Rust Core for Snowflake IDs, MTProto message IDs, envelope cryptography and transport framing
+- Signed Valdi catalog with Message, AI and Me tabs, capability-gated host APIs and a sandboxed Mini-app SDK
 
 ## Architecture
 

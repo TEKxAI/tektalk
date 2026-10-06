@@ -1,30 +1,25 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tektalk.vn/schemas/plugin-manifest-v1.json",
-  "title": "TEKtalk Plugin Manifest",
+  "$id": "https://tektalk.vn/schemas/plugin-manifest-v2.json",
+  "title": "TEKtalk Valdi Plugin Manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "id", "version", "entryPoint", "minimumHostVersion", "capabilities", "tab"],
+  "required": ["schemaVersion", "id", "version", "entryPoint", "pluginType", "minimumHostVersion", "minimumCoreAbi", "valdiRuntime", "capabilities", "networkAllowlist", "storageNamespace", "trustTier", "required", "rolloutPercentage", "tab"],
   "properties": {
-    "schemaVersion": {"const": 1},
-    "id": {"type": "string", "pattern": "^[a-z][a-z0-9.-]{2,63}$"},
+    "schemaVersion": {"const": 2},
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$"},
     "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
     "entryPoint": {"type": "string", "minLength": 1},
-    "minimumHostVersion": {"type": "string"},
-    "capabilities": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {"enum": ["camera", "location", "media-picker", "notifications", "secure-storage", "share"]}
-    },
-    "tab": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["titleKey", "icon", "order"],
-      "properties": {
-        "titleKey": {"type": "string"},
-        "icon": {"type": "string"},
-        "order": {"type": "integer", "minimum": 0}
-      }
-    }
+    "pluginType": {"enum": ["first_party_tab", "mini_app"]},
+    "minimumHostVersion": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "minimumCoreAbi": {"type": "integer", "minimum": 1},
+    "valdiRuntime": {"type": "string", "minLength": 1},
+    "capabilities": {"type": "array", "uniqueItems": true, "items": {"enum": ["message.read", "message.send", "media.select", "media.upload", "call.start", "ai.chat", "ai.read_selected_context", "profile.read", "profile.write", "device.read", "consent.manage", "camera.capture", "location.read", "notifications.manage", "share.open"]}},
+    "networkAllowlist": {"type": "array", "uniqueItems": true, "items": {"type": "string", "format": "hostname"}},
+    "storageNamespace": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,63}$"},
+    "trustTier": {"enum": ["first_party", "third_party"]},
+    "required": {"type": "boolean"},
+    "rolloutPercentage": {"type": "integer", "minimum": 0, "maximum": 100},
+    "tab": {"type": "object", "additionalProperties": false, "required": ["titleKey", "icon", "order"], "properties": {"titleKey": {"type": "string"}, "icon": {"type": "string"}, "order": {"type": "integer", "minimum": 0, "maximum": 9}}}
   }
 }

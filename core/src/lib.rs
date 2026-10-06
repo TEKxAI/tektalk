@@ -5,6 +5,7 @@
 
 pub mod id;
 pub mod mtproto;
+pub mod plugin;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Direction {

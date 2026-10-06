@@ -80,6 +80,11 @@ services:
     environment:
       PLUGIN_REGISTRY_BIND: 0.0.0.0:50051
       RUST_LOG: tektalk_plugin_registry=info
+      PLUGIN_SIGNING_SEED: ${PLUGIN_SIGNING_SEED}
+      PLUGIN_SIGNING_KEY_ID: ${PLUGIN_SIGNING_KEY_ID:-local-development}
+      PLUGIN_ARTIFACT_BASE_URL: ${PLUGIN_ARTIFACT_BASE_URL:-http://localhost:8090}
+      PLUGIN_REQUIRE_SIGNED_ARTIFACTS: ${PLUGIN_REQUIRE_SIGNED_ARTIFACTS:-false}
+      PLUGIN_ARTIFACT_METADATA_JSON: '${PLUGIN_ARTIFACT_METADATA_JSON:-[]}'
     ports: ["50051:50051"]
     restart: unless-stopped
   signin-signup:

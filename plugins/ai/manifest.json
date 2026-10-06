@@ -1,9 +1,7 @@
 {
-  "schemaVersion": 1,
-  "id": "tektalk.ai",
-  "version": "0.1.0",
-  "entryPoint": "AIPlugin",
-  "minimumHostVersion": "0.1.0",
-  "capabilities": ["camera", "media-picker", "location", "share"],
+  "schemaVersion": 2, "id": "tektalk.ai", "version": "0.2.0", "entryPoint": "AIPlugin", "pluginType": "first_party_tab",
+  "minimumHostVersion": "0.2.0", "minimumCoreAbi": 2, "valdiRuntime": "1.1",
+  "capabilities": ["ai.chat", "ai.read_selected_context", "media.select", "camera.capture", "location.read", "share.open"],
+  "networkAllowlist": [], "storageNamespace": "ai", "trustTier": "first_party", "required": false, "rolloutPercentage": 100,
   "tab": {"titleKey": "tab.ai", "icon": "sparkles", "order": 1}
 }

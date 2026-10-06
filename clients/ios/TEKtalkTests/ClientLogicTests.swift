@@ -57,4 +57,20 @@ final class ClientLogicTests: XCTestCase {
         XCTAssertNotEqual(client.0, server.0)
         XCTAssertEqual(MTProto2KDF.authKeyId(authKey).count, 8)
     }
+
+    func testPluginLifecyclePromotesAndRollsBack() throws {
+        var lifecycle = PluginLifecycle()
+        try lifecycle.transition(to: .downloaded)
+        try lifecycle.transition(to: .verified)
+        try lifecycle.transition(to: .staged)
+        try lifecycle.transition(to: .active)
+        try lifecycle.transition(to: .degraded)
+        try lifecycle.transition(to: .rolledBack)
+        XCTAssertEqual(lifecycle.state, .rolledBack)
+    }
+
+    func testPluginLifecycleRejectsUnverifiedActivation() {
+        var lifecycle = PluginLifecycle()
+        XCTAssertThrowsError(try lifecycle.transition(to: .active))
+    }
 }
