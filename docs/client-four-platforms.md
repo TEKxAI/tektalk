@@ -30,3 +30,8 @@ Start the backend with `make local-up`. Android emulators use
 
 CI builds each client on the matching hosted OS. Release signing and
 notarization remain deployment credential concerns and are not bypassed.
+
+Every successful client workflow publishes a runnable debug artifact: Android
+APK, iOS Simulator `.app`, macOS `.app`, and the self-contained Windows WinUI
+output directory. These artifacts are unsigned development builds intended for
+functional testing, not store submission.
