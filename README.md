@@ -81,3 +81,7 @@ The realtime protocol uses the MTProto 2.0 established-session envelope, SHA-256
 - `docs/` architecture, authentication flows, runbook, and threat model
 
 Client production status and the remaining secure-storage, realtime, media, push and calling gates are tracked in `docs/client-production.md`.
+
+## Native client build matrix
+
+CI compiles the shared Rust Core and then builds the Android, iOS, macOS and Windows native clients on their matching hosted operating systems. See `docs/client-four-platforms.md` for local commands and platform boundaries.
