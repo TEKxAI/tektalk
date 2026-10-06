@@ -46,6 +46,15 @@ final class DesktopPluginLoader {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }
 
+    func downloadAndInstall(_ artifact: DesktopPluginArtifact) async throws -> URL {
+        guard artifact.url.scheme?.lowercased() == "https" else { throw DesktopPluginError.invalidIdentifier }
+        let (bytes, response) = try await URLSession.shared.data(from: artifact.url)
+        guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
+            throw DesktopPluginError.loadFailed("plugin download failed")
+        }
+        return try install(bytes, artifact: artifact)
+    }
+
     func install(_ bytes: Data, artifact: DesktopPluginArtifact) throws -> URL {
         guard artifact.pluginID.range(of: #"^[a-z][a-z0-9.-]{2,127}$"#, options: .regularExpression) != nil else { throw DesktopPluginError.invalidIdentifier }
         guard RustCore.shared.verifyArtifact(bytes, sha256: artifact.sha256, signature: artifact.signature, publicKey: artifact.publicKey) else { throw DesktopPluginError.signatureRejected }

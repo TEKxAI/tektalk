@@ -26,6 +26,11 @@ std::unique_ptr<NativeDesktopPlugin> NativeDesktopPlugin::Load(std::filesystem::
     auto plugin=std::unique_ptr<NativeDesktopPlugin>(new NativeDesktopPlugin(module));plugin->create_=create;plugin->destroy_=destroy;return plugin;
 }
 winrt::Microsoft::UI::Xaml::FrameworkElement NativeDesktopPlugin::CreateView(){if(!raw_view_)raw_view_=create_(nullptr);if(!raw_view_)return nullptr;winrt::IInspectable value{nullptr};winrt::copy_from_abi(value,reinterpret_cast<::IUnknown*>(raw_view_));return value.as<winrt::Microsoft::UI::Xaml::FrameworkElement>();}
+winrt::Windows::Foundation::IAsyncOperation<std::filesystem::path> DesktopPluginInstaller::DownloadAndInstall(winrt::hstring const&url,std::string const&id,std::string const&version,std::array<uint8_t,32>const&digest,std::array<uint8_t,64>const&signature,std::array<uint8_t,32>const&key)const{
+    auto uri=winrt::Windows::Foundation::Uri(url);if(uri.SchemeName()!=L"https")throw std::runtime_error("desktop plugins require HTTPS");
+    winrt::Windows::Web::Http::HttpClient client;auto response=co_await client.GetAsync(uri);if(!response.IsSuccessStatusCode())throw std::runtime_error("plugin download failed");
+    auto buffer=co_await response.Content().ReadAsBufferAsync();std::vector<uint8_t>bytes(buffer.Length());auto reader=winrt::Windows::Storage::Streams::DataReader::FromBuffer(buffer);reader.ReadBytes(bytes);co_return Install(id,version,bytes,digest,signature,key);
+}
 std::filesystem::path DesktopPluginInstaller::Install(std::string const&id,std::string const&version,std::span<uint8_t const>bytes,std::array<uint8_t,32>const&digest,std::array<uint8_t,64>const&signature,std::array<uint8_t,32>const&key)const{
     if(!std::regex_match(id,std::regex(R"(^[a-z][a-z0-9.-]{2,127}$)"))||!std::regex_match(version,std::regex(R"(^[0-9]+\.[0-9]+\.[0-9]+$)")))throw std::runtime_error("invalid plugin identity");
     if(!core_.VerifyArtifact(bytes,digest,signature,key))throw std::runtime_error("plugin Ed25519 signature rejected");

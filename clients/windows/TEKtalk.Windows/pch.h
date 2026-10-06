@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <unknwn.h>
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Storage.Streams.h>
 #include <winrt/Windows.Data.Json.h>
 #include <winrt/Windows.UI.Text.h>
 #include <winrt/Windows.Web.Http.h>
