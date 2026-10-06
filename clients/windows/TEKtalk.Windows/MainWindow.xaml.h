@@ -13,3 +13,6 @@ private:
     static Microsoft::UI::Xaml::Controls::TextBlock Text(winrt::hstring const&,double=14,bool=false);
 };
 }
+namespace winrt::TEKtalk::factory_implementation {
+struct MainWindow : MainWindowT<MainWindow, implementation::MainWindow> {};
+}
