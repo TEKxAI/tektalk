@@ -25,7 +25,7 @@ std::unique_ptr<NativeDesktopPlugin> NativeDesktopPlugin::Load(std::filesystem::
     if(!abi||!id||!health||!create||!destroy||abi()!=1||expected_id!=id()||health()!=1){FreeLibrary(module);throw std::runtime_error("plugin ABI, identity or health check rejected");}
     auto plugin=std::unique_ptr<NativeDesktopPlugin>(new NativeDesktopPlugin(module));plugin->create_=create;plugin->destroy_=destroy;return plugin;
 }
-winrt::Microsoft::UI::Xaml::FrameworkElement NativeDesktopPlugin::CreateView(){if(!raw_view_)raw_view_=create_(nullptr);if(!raw_view_)return nullptr;winrt::IInspectable value{nullptr};winrt::copy_from_abi(value,reinterpret_cast<::IUnknown*>(raw_view_));return value.as<winrt::Microsoft::UI::Xaml::FrameworkElement>();}
+winrt::Microsoft::UI::Xaml::FrameworkElement NativeDesktopPlugin::CreateView(){if(!raw_view_)raw_view_=create_(nullptr);if(!raw_view_)return nullptr;winrt::Windows::Foundation::IInspectable value{nullptr};winrt::copy_from_abi(value,reinterpret_cast<::IUnknown*>(raw_view_));return value.as<winrt::Microsoft::UI::Xaml::FrameworkElement>();}
 winrt::Windows::Foundation::IAsyncOperation<std::filesystem::path> DesktopPluginInstaller::DownloadAndInstall(winrt::hstring const&url,std::string const&id,std::string const&version,std::array<uint8_t,32>const&digest,std::array<uint8_t,64>const&signature,std::array<uint8_t,32>const&key)const{
     auto uri=winrt::Windows::Foundation::Uri(url);if(uri.SchemeName()!=L"https")throw std::runtime_error("desktop plugins require HTTPS");
     winrt::Windows::Web::Http::HttpClient client;auto response=co_await client.GetAsync(uri);if(!response.IsSuccessStatusCode())throw std::runtime_error("plugin download failed");
