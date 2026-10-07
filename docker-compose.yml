@@ -63,6 +63,7 @@ services:
     environment:
       DATABASE_URL: postgres://chat:chat@postgres:5432/chat
       REDIS_URL: redis://redis:6379
+      BUSINESS_SOLUTIONS_URL: http://business-solutions:50056
       SCYLLA_NODES: scylla:9042
       KAFKA_BROKERS: redpanda:9092
       SNOWFLAKE_NODE_ID: 0
@@ -72,6 +73,12 @@ services:
       redis: {condition: service_healthy}
       scylla: {condition: service_healthy}
       redpanda: {condition: service_healthy}
+      business-solutions: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:8080/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     restart: unless-stopped
   plugin-registry:
     build:
@@ -137,6 +144,8 @@ services:
       timeout: 3s
       retries: 20
   business-solutions:
+    depends_on:
+      postgres: {condition: service_healthy}
     build:
       context: .
       dockerfile: services/business-solutions/Dockerfile

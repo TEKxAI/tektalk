@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: tektalk-server-config}
+data: {APP_ENV: production, OTP_DEV_ECHO: "false", RUST_LOG: "chat_server=info,tower_http=warn"}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: tektalk-server}
+spec: {replicas: 3}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: tektalk-business-solutions}
+spec: {replicas: 3}
+

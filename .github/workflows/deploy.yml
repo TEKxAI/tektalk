@@ -1,0 +1,48 @@
+name: deploy
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options: [sandbox, staging, production]
+      image_tag:
+        description: Immutable release tag or commit SHA
+        required: true
+        type: string
+permissions: {contents: read, packages: read}
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+      - name: Configure cluster
+        env: {KUBECONFIG_B64: "${{ secrets.KUBECONFIG_B64 }}"}
+        run: |
+          test -n "$KUBECONFIG_B64"
+          printf '%s' "$KUBECONFIG_B64" | base64 --decode > "$RUNNER_TEMP/kubeconfig"
+          chmod 600 "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> "$GITHUB_ENV"
+      - name: Render immutable release
+        env: {TARGET_ENV: "${{ inputs.environment }}", IMAGE_TAG: "${{ inputs.image_tag }}"}
+        run: |
+          cd "infra/k8s/overlays/$TARGET_ENV"
+          kustomize edit set image \
+            ghcr.io/tekxai/tektalk/server="ghcr.io/tekxai/tektalk/server:$IMAGE_TAG" \
+            ghcr.io/tekxai/tektalk/business-solutions="ghcr.io/tekxai/tektalk/business-solutions:$IMAGE_TAG"
+          kubectl kustomize . > "$RUNNER_TEMP/release.yaml"
+      - name: Deploy and verify
+        env: {TARGET_ENV: "${{ inputs.environment }}"}
+        run: |
+          namespace="tektalk-$TARGET_ENV"
+          kubectl create namespace "$namespace" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f "$RUNNER_TEMP/release.yaml"
+          kubectl -n "$namespace" rollout status deployment/tektalk-business-solutions --timeout=300s
+          kubectl -n "$namespace" rollout status deployment/tektalk-server --timeout=300s
+

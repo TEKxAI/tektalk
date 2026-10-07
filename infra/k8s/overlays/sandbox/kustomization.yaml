@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tektalk-sandbox
+resources: [../../]
+patches: [{path: patch.yaml}]
+images:
+  - {name: ghcr.io/tekxai/tektalk/server, newTag: sandbox}
+  - {name: ghcr.io/tekxai/tektalk/business-solutions, newTag: sandbox}
+
