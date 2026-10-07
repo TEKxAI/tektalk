@@ -1,3 +1,19 @@
-"Message" = "Tin nhắn";
-"AI" = "AI";
-"Me" = "Tôi";
+"tab.message" = "Tin nhắn";
+"tab.ai" = "AI";
+"tab.me" = "Tôi";
+"auth.sign_in" = "Đăng nhập";
+"auth.sign_up" = "Đăng ký";
+"auth.sign_out" = "Đăng xuất";
+"auth.working" = "Đang xử lý…";
+"auth.verify_device" = "Xác minh thiết bị";
+"auth.phone_e164" = "Số điện thoại E.164";
+"auth.display_name" = "Tên hiển thị";
+"auth.password" = "Mật khẩu";
+"auth.security_question" = "Câu hỏi bảo mật";
+"auth.answer" = "Câu trả lời";
+"auth.security_answer" = "Câu trả lời bảo mật";
+"message.sync" = "Đồng bộ";
+"message.compose" = "Tin nhắn";
+"message.send" = "Gửi";
+"ai.plugin_description" = "Plugin AI đã ký sẵn sàng để phân phối.";
+

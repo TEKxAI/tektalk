@@ -16,6 +16,8 @@ jobs:
           jq --exit-status . plugins/plugin-manifest.schema.json >/dev/null
           for manifest in plugins/*/manifest.json; do jq --exit-status . "$manifest" >/dev/null; done
           ./scripts/validate-plugins.sh
+      - name: Validate localization catalogs
+        run: python3 scripts/validate-localization.py
       - name: Validate Rust client-core ABI surface
         run: ./scripts/check_layout.sh
   rust:
