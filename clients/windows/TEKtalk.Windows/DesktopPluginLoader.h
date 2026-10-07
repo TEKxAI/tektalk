@@ -22,7 +22,7 @@ private:
 class DesktopPluginInstaller final {
 public:
     DesktopPluginInstaller(std::filesystem::path root, RustCore const& core) : root_(std::move(root)), core_(core) {}
-    winrt::Windows::Foundation::IAsyncOperation<std::filesystem::path> DownloadAndInstall(winrt::hstring const& url,
+    winrt::Windows::Foundation::IAsyncOperation<winrt::hstring> DownloadAndInstall(winrt::hstring const& url,
         std::string const& id, std::string const& version, std::array<uint8_t,32> const& digest,
         std::array<uint8_t,64> const& signature, std::array<uint8_t,32> const& public_key) const;
     std::filesystem::path Install(std::string const& id, std::string const& version, std::span<uint8_t const> bytes,
