@@ -1,6 +1,8 @@
 #include "../include/tektalk_plugin.h"
 #include <unknwn.h>
 #include <winrt/base.h>
+#include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
@@ -19,6 +21,6 @@ extern "C" void* tektalk_plugin_create_view(tektalk_host_api const*){
     winrt::Microsoft::UI::Xaml::Controls::StackPanel panel;panel.Spacing(12);
     winrt::Microsoft::UI::Xaml::Controls::TextBlock heading;heading.Text(TITLE);heading.FontSize(30);panel.Children().Append(heading);
     winrt::Microsoft::UI::Xaml::Controls::TextBlock detail;detail.Text(L"Native TEKtalk plugin • ABI 1");panel.Children().Append(detail);
-    return winrt::detach_abi(panel.as<winrt::IInspectable>());
+    return winrt::detach_abi(panel.as<winrt::Windows::Foundation::IInspectable>());
 }
 extern "C" void tektalk_plugin_destroy_view(void* view){if(view)reinterpret_cast<::IUnknown*>(view)->Release();}
