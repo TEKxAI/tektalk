@@ -1,0 +1,7 @@
+<resources>
+  <string name="app_name">TEKtalk</string>
+  <string name="tab_message">Message</string>
+  <string name="tab_ai">AI</string>
+  <string name="tab_me">Me</string>
+  <string name="ai_plugin_description">The signed AI assistant plugin will be delivered by the platform.</string>
+</resources>

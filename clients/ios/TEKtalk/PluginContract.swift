@@ -1,5 +1,14 @@
 import Foundation
 
+enum PluginColorScheme: String, Codable, Sendable { case light, dark }
+enum PluginLayoutClass: String, Codable, Sendable { case compact, expanded }
+struct PluginUIEnvironment: Codable, Equatable, Sendable {
+    let locale: String
+    let colorScheme: PluginColorScheme
+    let layoutClass: PluginLayoutClass
+    let contentSizeCategory: String
+}
+
 struct PluginTab: Codable, Sendable {
     let titleKey: String
     let icon: String
@@ -65,6 +74,7 @@ protocol ValdiPluginRuntime: Sendable {
 }
 
 protocol PluginHandle: AnyObject, Sendable {
+    func updateUIEnvironment(_ environment: PluginUIEnvironment) async
     var id: String { get }
     func healthCheck() async -> Bool
     func unload()

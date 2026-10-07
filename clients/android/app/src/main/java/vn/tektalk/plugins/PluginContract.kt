@@ -65,6 +65,7 @@ interface ValdiPluginRuntime {
 }
 
 interface PluginHandle {
+    fun updateUIEnvironment(environment: PluginUIEnvironment)
     val id: String
     suspend fun healthCheck(): Boolean
     fun unload()
@@ -73,3 +74,11 @@ interface PluginHandle {
 interface HostCapabilityBroker {
     suspend fun invoke(pluginId: String, capability: String, request: ByteArray): ByteArray
 }
+enum class PluginColorScheme { LIGHT, DARK }
+enum class PluginLayoutClass { COMPACT, EXPANDED }
+data class PluginUIEnvironment(
+    val locale: String,
+    val colorScheme: PluginColorScheme,
+    val layoutClass: PluginLayoutClass,
+    val fontScale: Float,
+)

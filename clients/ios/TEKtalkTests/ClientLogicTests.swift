@@ -2,6 +2,12 @@ import XCTest
 @testable import TEKtalk
 
 final class ClientLogicTests: XCTestCase {
+    func testPluginUIEnvironmentCarriesLocaleThemeAndTabletLayout() {
+        let environment = PluginUIEnvironment(locale: "vi-VN", colorScheme: .dark, layoutClass: .expanded, contentSizeCategory: "accessibility")
+        XCTAssertEqual(environment.locale, "vi-VN")
+        XCTAssertEqual(environment.colorScheme, .dark)
+        XCTAssertEqual(environment.layoutClass, .expanded)
+    }
     func testE164ValidationAcceptsInternationalNumber() {
         XCTAssertTrue(InputValidator.isE164("+84901234567"))
         XCTAssertFalse(InputValidator.isE164("0901234567"))

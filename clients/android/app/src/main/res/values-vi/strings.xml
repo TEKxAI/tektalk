@@ -1,0 +1,7 @@
+<resources>
+  <string name="app_name">TEKtalk</string>
+  <string name="tab_message">Tin nhắn</string>
+  <string name="tab_ai">AI</string>
+  <string name="tab_me">Tôi</string>
+  <string name="ai_plugin_description">Trợ lý AI đã ký sẽ được phân phối bởi nền tảng.</string>
+</resources>

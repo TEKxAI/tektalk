@@ -9,6 +9,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: vn.tektalk.ios
         SWIFT_VERSION: "5.10"
+        TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: true
         LIBRARY_SEARCH_PATHS: "$(inherited) $(SRCROOT)/RustCore"

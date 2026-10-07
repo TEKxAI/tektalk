@@ -20,7 +20,10 @@ private struct AuthView: View {
 
 private struct HostTabs: View {
     let tokens:Tokens;let logout:()->Void
-    var body: some View { TabView { MessageHome(tokens:tokens).tabItem{Label("Message",systemImage:"message.fill")};Placeholder(title:"AI",detail:"Trợ lý AI sẽ được phân phối như một plugin đã ký.").tabItem{Label("AI",systemImage:"sparkles")};ProfileView(tokens:tokens,logout:logout).tabItem{Label("Me",systemImage:"person.fill")}} }
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var selection = 0
+    @ViewBuilder private var selectedContent: some View { switch selection { case 1: Placeholder(title:"AI",detail:String(localized:"ai_plugin_description")); case 2: ProfileView(tokens:tokens,logout:logout); default: MessageHome(tokens:tokens) } }
+    var body: some View { if horizontalSizeClass == .regular { NavigationSplitView { List(selection:$selection) { Label("Message",systemImage:"message.fill").tag(0);Label("AI",systemImage:"sparkles").tag(1);Label("Me",systemImage:"person.fill").tag(2) }.navigationTitle("TEKtalk") } detail: { selectedContent } } else { TabView(selection:$selection) { MessageHome(tokens:tokens).tabItem{Label("Message",systemImage:"message.fill")}.tag(0);Placeholder(title:"AI",detail:String(localized:"ai_plugin_description")).tabItem{Label("AI",systemImage:"sparkles")}.tag(1);ProfileView(tokens:tokens,logout:logout).tabItem{Label("Me",systemImage:"person.fill")}.tag(2) } } }
 }
 
 private struct MessageHome: View {

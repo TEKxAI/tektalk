@@ -60,3 +60,14 @@ The desktop ABI exposes a JSON capability bridge instead of raw application
 objects. This preserves the same consent, entitlement and L0/L1/L2 checks used
 by Valdi. Message and Me also ship as bundled last-known-good libraries so a
 bad catalog cannot make the host unusable.
+
+## Adaptive UI, localization and themes
+
+The host owns a versioned `UIEnvironment` and propagates it whenever locale,
+color scheme, content-size category or window class changes. `compact` renders
+phone bottom navigation while `expanded` renders tablet/desktop side navigation
+with a persistent content pane. Plugins use semantic palette values and
+localized keys supplied by their artifact rather than hard-coded light colors
+or a host-language assumption. Android uses the 600dp breakpoint, iOS uses
+horizontal size classes, and desktop hosts follow native window and theme APIs.
+Bundled recovery plugins implement the same contract as remote plugins.
