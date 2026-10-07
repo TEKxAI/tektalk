@@ -3,10 +3,10 @@ use std::sync::Arc;
 use tektalk_contracts::v1::{
     product_catalog_service_server::ProductCatalogService,
     subscription_service_server::SubscriptionService,
-    ActivateSubscriptionRequest, CancelSubscriptionRequest, CustomerSegment,
-    GetEntitlementsRequest, ListPlansRequest, ListPlansResponse, ProductPlan,
-    ResolveEntitlementsRequest, ResolveEntitlementsResponse, Subscription,
-    SubscriptionResponse, SubscriptionStatus,
+    ActivateRequest, ActivateResponse, CancelRequest, CancelResponse, CustomerSegment,
+    GetEntitlementsRequest, GetEntitlementsResponse, ListPlansRequest, ListPlansResponse,
+    ProductPlan, ResolveEntitlementsRequest, ResolveEntitlementsResponse, Subscription,
+    SubscriptionStatus,
 };
 use tektalk_product_catalog::{reference_catalog, Catalog, Segment};
 use tonic::{Request, Response, Status};
@@ -89,8 +89,8 @@ impl ProductCatalogService for CommerceService {
 impl SubscriptionService for CommerceService {
     async fn activate(
         &self,
-        request: Request<ActivateSubscriptionRequest>,
-    ) -> Result<Response<SubscriptionResponse>, Status> {
+        request: Request<ActivateRequest>,
+    ) -> Result<Response<ActivateResponse>, Status> {
         let input = request.into_inner();
         if input.subject_id.trim().is_empty() {
             return Err(Status::invalid_argument("subject_id is required"));
@@ -110,15 +110,15 @@ impl SubscriptionService for CommerceService {
             subscription_key(&input.subject_id, segment),
             subscription.clone(),
         );
-        Ok(Response::new(SubscriptionResponse {
+        Ok(Response::new(ActivateResponse {
             subscription: Some(subscription),
         }))
     }
 
     async fn cancel(
         &self,
-        request: Request<CancelSubscriptionRequest>,
-    ) -> Result<Response<SubscriptionResponse>, Status> {
+        request: Request<CancelRequest>,
+    ) -> Result<Response<CancelResponse>, Status> {
         let input = request.into_inner();
         let segment = domain_segment(input.subject_segment)?;
         let key = subscription_key(&input.subject_id, segment);
@@ -127,7 +127,7 @@ impl SubscriptionService for CommerceService {
             .get_mut(&key)
             .ok_or_else(|| Status::not_found("active subscription not found"))?;
         subscription.status = SubscriptionStatus::Cancelled as i32;
-        Ok(Response::new(SubscriptionResponse {
+        Ok(Response::new(CancelResponse {
             subscription: Some(subscription.clone()),
         }))
     }
@@ -135,7 +135,7 @@ impl SubscriptionService for CommerceService {
     async fn get_entitlements(
         &self,
         request: Request<GetEntitlementsRequest>,
-    ) -> Result<Response<ResolveEntitlementsResponse>, Status> {
+    ) -> Result<Response<GetEntitlementsResponse>, Status> {
         let input = request.into_inner();
         let segment = domain_segment(input.subject_segment)?;
         let subscription = self
@@ -149,7 +149,7 @@ impl SubscriptionService for CommerceService {
             .catalog
             .resolve_entitlements(&subscription.plan_code, segment)
             .map_err(|error| Status::failed_precondition(format!("{error:?}")))?;
-        Ok(Response::new(ResolveEntitlementsResponse {
+        Ok(Response::new(GetEntitlementsResponse {
             entitlement_keys: entitlements.into_iter().collect(),
         }))
     }
@@ -162,7 +162,7 @@ mod tests {
     #[tokio::test]
     async fn activation_unlocks_entitlements_and_cancel_revokes_them() {
         let service = CommerceService::default();
-        let activate = ActivateSubscriptionRequest {
+        let activate = ActivateRequest {
             subject_id: "user-1".into(),
             subject_segment: CustomerSegment::User as i32,
             plan_code: "user.premium".into(),
@@ -174,7 +174,7 @@ mod tests {
         };
         let result = service.get_entitlements(Request::new(query.clone())).await.unwrap();
         assert!(result.into_inner().entitlement_keys.contains(&"ai.assistant.standard".to_owned()));
-        service.cancel(Request::new(CancelSubscriptionRequest {
+        service.cancel(Request::new(CancelRequest {
             subject_id: "user-1".into(),
             subject_segment: CustomerSegment::User as i32,
         })).await.unwrap();
@@ -184,7 +184,7 @@ mod tests {
     #[tokio::test]
     async fn enterprise_plan_cannot_be_activated_for_user() {
         let service = CommerceService::default();
-        let result = service.activate(Request::new(ActivateSubscriptionRequest {
+        let result = service.activate(Request::new(ActivateRequest {
             subject_id: "user-1".into(),
             subject_segment: CustomerSegment::User as i32,
             plan_code: "enterprise.oa-business".into(),
@@ -192,4 +192,3 @@ mod tests {
         assert_eq!(result.unwrap_err().code(), tonic::Code::FailedPrecondition);
     }
 }
-

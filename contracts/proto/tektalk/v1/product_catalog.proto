@@ -55,13 +55,13 @@ message Subscription {
   SubscriptionStatus status = 5;
 }
 
-message ActivateSubscriptionRequest {
+message ActivateRequest {
   string subject_id = 1;
   CustomerSegment subject_segment = 2;
   string plan_code = 3;
 }
 
-message CancelSubscriptionRequest {
+message CancelRequest {
   string subject_id = 1;
   CustomerSegment subject_segment = 2;
 }
@@ -71,12 +71,20 @@ message GetEntitlementsRequest {
   CustomerSegment subject_segment = 2;
 }
 
-message SubscriptionResponse {
+message ActivateResponse {
   Subscription subscription = 1;
 }
 
+message CancelResponse {
+  Subscription subscription = 1;
+}
+
+message GetEntitlementsResponse {
+  repeated string entitlement_keys = 1;
+}
+
 service SubscriptionService {
-  rpc Activate(ActivateSubscriptionRequest) returns (SubscriptionResponse);
-  rpc Cancel(CancelSubscriptionRequest) returns (SubscriptionResponse);
-  rpc GetEntitlements(GetEntitlementsRequest) returns (ResolveEntitlementsResponse);
+  rpc Activate(ActivateRequest) returns (ActivateResponse);
+  rpc Cancel(CancelRequest) returns (CancelResponse);
+  rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse);
 }
