@@ -7,7 +7,11 @@ struct ContentView: View {
 
 private struct AuthView: View {
     @EnvironmentObject private var session: SessionStore
-    @State private var phone = "+84", password = "", name = "", question = "Tên trường tiểu học của bạn?", answer = ""
+    @State private var phone = "+84"
+    @State private var password = ""
+    @State private var name = ""
+    @State private var question = "Tên trường tiểu học của bạn?"
+    @State private var answer = ""
     var body: some View {
         HStack(spacing: 0) {
             ZStack { LinearGradient(colors: [.blue, Color(red: 0.22, green: 0.48, blue: 0.96)], startPoint: .topLeading, endPoint: .bottomTrailing); VStack(alignment: .leading, spacing: 16) { Text("TEKtalk").font(.system(size: 52, weight: .bold)); Text("Native messaging for macOS\nPowered by shared Rust Core").font(.title2); Spacer(); Label(RustCore.shared.isAvailable ? "Rust Core connected" : "Rust Core development fallback", systemImage: "checkmark.shield") }.foregroundStyle(.white).padding(52) }.frame(width: 410)
@@ -48,7 +52,11 @@ private struct HostView: View {
 private struct ChatView: View {
     let tokens: Tokens
     @EnvironmentObject private var session: SessionStore
-    @State private var conversation = "", recipient = "", draft = "", status = "Nhập conversation và recipient UUID", messages: [ChatMessage] = []
+    @State private var conversation = ""
+    @State private var recipient = ""
+    @State private var draft = ""
+    @State private var status = "Nhập conversation và recipient UUID"
+    @State private var messages: [ChatMessage] = []
     var body: some View { VStack(spacing: 0) { HStack { VStack(alignment: .leading) { Text("Tin nhắn").font(.largeTitle.bold()); Text(status).foregroundStyle(.secondary) }; Spacer(); Button("Đồng bộ") { Task { await load() } } }.padding(); Divider(); ScrollView { LazyVStack(spacing: 10) { ForEach(messages) { message in HStack { if message.sender_id == tokens.user_id { Spacer() }; Text(message.body).padding(12).foregroundStyle(message.sender_id == tokens.user_id ? .white : .primary).background(message.sender_id == tokens.user_id ? Color.blue : Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 14)); if message.sender_id != tokens.user_id { Spacer() } } } }.padding() }; Divider(); VStack { HStack { TextField("Conversation UUID", text: $conversation); TextField("Recipient UUID", text: $recipient) }; HStack { TextField("Tin nhắn", text: $draft); Button("Gửi") { Task { await send() } }.keyboardShortcut(.return, modifiers: .command) } }.padding() }.navigationTitle("Message") }
     @MainActor private func load() async { guard let id = UUID(uuidString: conversation) else { status = "Conversation UUID không hợp lệ"; return }; do { messages = try await session.api.history(token: tokens.access_token, conversation: id); status = "Đã đồng bộ \(messages.count) tin" } catch { status = error.localizedDescription } }
     @MainActor private func send() async { if let error = Validation.chat(conversation: conversation, recipient: recipient, text: draft) { status = error; return }; guard let cid = UUID(uuidString: conversation), let rid = UUID(uuidString: recipient) else { return }; let text = draft; draft = ""; do { let response = try await session.api.send(token: tokens.access_token, conversation: cid, recipient: rid, text: text); let unique = Dictionary(uniqueKeysWithValues: (messages + [response.message]).map { ($0.id, $0) }); messages = unique.values.sorted { $0.id < $1.id }; status = "Đã gửi • ID \(response.message.id)" } catch { status = error.localizedDescription } }

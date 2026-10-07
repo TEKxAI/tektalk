@@ -5,6 +5,7 @@
     <NuGetTargetMoniker>native,Version=v0.0</NuGetTargetMoniker>
     <NuGetTargetPlatformIdentifier>Windows</NuGetTargetPlatformIdentifier>
     <NuGetTargetPlatformVersion>$(WindowsTargetPlatformVersion)</NuGetTargetPlatformVersion>
+    <RuntimeIdentifiers>win10-x64</RuntimeIdentifiers>
   </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
