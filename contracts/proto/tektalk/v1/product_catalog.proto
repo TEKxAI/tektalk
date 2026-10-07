@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package tektalk.v1;
+
+enum CustomerSegment {
+  CUSTOMER_SEGMENT_UNSPECIFIED = 0;
+  CUSTOMER_SEGMENT_USER = 1;
+  CUSTOMER_SEGMENT_ENTERPRISE = 2;
+}
+
+message ProductPlan {
+  string code = 1;
+  CustomerSegment segment = 2;
+  string display_name = 3;
+  string currency = 4;
+  uint64 price_minor_units = 5;
+  repeated string entitlement_keys = 6;
+  bool active = 7;
+}
+
+message ListPlansRequest {
+  CustomerSegment segment = 1;
+}
+
+message ListPlansResponse {
+  repeated ProductPlan plans = 1;
+}
+
+message ResolveEntitlementsRequest {
+  string subject_id = 1;
+  CustomerSegment subject_segment = 2;
+  string plan_code = 3;
+}
+
+message ResolveEntitlementsResponse {
+  repeated string entitlement_keys = 1;
+}
+
+service ProductCatalogService {
+  rpc ListPlans(ListPlansRequest) returns (ListPlansResponse);
+  rpc ResolveEntitlements(ResolveEntitlementsRequest) returns (ResolveEntitlementsResponse);
+}
+
