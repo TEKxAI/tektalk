@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "MainWindow.xaml.h"
 #include "ClientLogic.h"
+#if __has_include("MainWindow.g.cpp")
+#include "MainWindow.g.cpp"
+#endif
 using namespace winrt;using namespace Windows::Foundation;using namespace Microsoft::UI::Xaml;using namespace Microsoft::UI::Xaml::Controls;
 namespace winrt::TEKtalk::implementation {
 TextBlock MainWindow::Text(hstring const& value,double size,bool bold){TextBlock t;t.Text(value);t.FontSize(size);if(bold)t.FontWeight(Windows::UI::Text::FontWeights::SemiBold());return t;}
