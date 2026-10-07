@@ -51,7 +51,7 @@ jobs:
       - name: Build Android Rust Core JNI libraries
         run: |
           cargo install cargo-ndk --locked
-          ./scripts/build-core-android.sh
+          bash scripts/build-core-android.sh
       - name: Test with Android coverage gate
         run: ./scripts/coverage/android.sh
       - run: gradle :app:assembleDebug
@@ -86,7 +86,7 @@ jobs:
           path: coverage/ios/xccov.json
       - name: Build iOS simulator application
         working-directory: clients/ios
-        run: xcodebuild build -project TEKtalk.xcodeproj -scheme TEKtalk -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+        run: xcodebuild build -project TEKtalk.xcodeproj -scheme TEKtalk -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO
       - uses: actions/upload-artifact@v4
         with:
           name: tektalk-ios-simulator
@@ -101,14 +101,14 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Build shared Rust Core
-        run: ./scripts/build-core-macos.sh
+        run: bash scripts/build-core-macos.sh
       - name: Generate and test native macOS client
         working-directory: clients/macos
         run: |
           xcodegen generate
           xcodebuild test -project TEKtalkMac.xcodeproj -scheme TEKtalkMac -destination 'platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO
       - name: Build native macOS tab plugins
-        run: ./scripts/build-desktop-plugins-macos.sh
+        run: bash scripts/build-desktop-plugins-macos.sh
       - uses: actions/upload-artifact@v4
         with:
           name: tektalk-macos-debug
@@ -120,7 +120,7 @@ jobs:
           path: build/desktop-plugins/macos/*.dylib
           if-no-files-found: error
   windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
