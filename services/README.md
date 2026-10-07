@@ -14,6 +14,8 @@ The current runnable Rust server remains the migration source. New services are 
 | `notification` | APNs/FCM delivery | admin-only contract | consumes message events |
 | `plugin-registry` | signed catalog and rollout | `PluginRegistryService` | plugin rollout changed |
 | `ai-orchestrator` | models, tools and quotas | AI contract | AI task completed |
+| `product-catalog` | uVAS/eVAS plans and capability composition | `ProductCatalogService` | plan published/retired |
+| `subscription` | commercial lifecycle and effective entitlements | `SubscriptionService` | subscription activated/cancelled |
 
 Each service owns its schema and publishes events through a transactional outbox. Cross-service database queries and distributed dual writes are forbidden.
 
@@ -27,6 +29,7 @@ The learning stack packages four independent gRPC processes from one Rust crate 
 | `chat` | 50053 | OTT message validation, idempotency, ordering and history |
 | `session-management` | 50054 | Access-level, scope, audience, expiry, elevation and revocation checks |
 | `consent-management` | 50055 | Purpose-bound data and scope grants for platform or third-party owners |
+| `business-solutions` | 50056 | Product catalog, subscription lifecycle and commercial entitlement |
 
 Session levels are cumulative. L0 covers `identifier.*` and `profile.*`; L1 adds `friend.*`, `group.*`, `community.*`, `oauth.*` and `security.*`; L2 adds `app.*`, `miniapp.*` and `business.*`. Elevation requires a security proof, rotates the access token and shortens the elevated lifetime.
 

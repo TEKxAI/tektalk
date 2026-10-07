@@ -1,5 +1,5 @@
 [workspace]
-members = ["core", "server", "services/contracts-rust", "services/plugin-registry", "services/platform-services", "services/product-catalog"]
+members = ["core", "server", "services/contracts-rust", "services/plugin-registry", "services/platform-services", "services/product-catalog", "services/business-solutions"]
 resolver = "2"
 
 [workspace.package]

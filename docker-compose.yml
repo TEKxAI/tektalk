@@ -136,6 +136,20 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+  business-solutions:
+    build:
+      context: .
+      dockerfile: services/business-solutions/Dockerfile
+    environment:
+      SERVICE_BIND: 0.0.0.0:50056
+      RUST_LOG: tektalk_business_solutions=info
+    ports: ["50056:50056"]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "50056"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
 volumes:
   pg-data:
   redis-data:

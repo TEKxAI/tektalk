@@ -12,6 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "../../contracts/proto/tektalk/v1/chat.proto",
         "../../contracts/proto/tektalk/v1/session_management.proto",
         "../../contracts/proto/tektalk/v1/consent_management.proto",
+        "../../contracts/proto/tektalk/v1/product_catalog.proto",
     ];
     tonic_build::configure()
         .build_server(true)

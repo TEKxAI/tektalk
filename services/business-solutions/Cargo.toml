@@ -1,0 +1,21 @@
+[package]
+name = "tektalk-business-solutions"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1"
+dashmap = "6"
+tektalk-contracts = { path = "../contracts-rust" }
+tektalk-product-catalog = { path = "../product-catalog" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+tonic = "0.12"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1", features = ["v4"] }
+
+[[bin]]
+name = "business-solutions"
+path = "src/main.rs"
+

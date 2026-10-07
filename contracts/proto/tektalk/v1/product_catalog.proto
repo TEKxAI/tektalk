@@ -41,3 +41,42 @@ service ProductCatalogService {
   rpc ResolveEntitlements(ResolveEntitlementsRequest) returns (ResolveEntitlementsResponse);
 }
 
+enum SubscriptionStatus {
+  SUBSCRIPTION_STATUS_UNSPECIFIED = 0;
+  SUBSCRIPTION_STATUS_ACTIVE = 1;
+  SUBSCRIPTION_STATUS_CANCELLED = 2;
+}
+
+message Subscription {
+  string id = 1;
+  string subject_id = 2;
+  CustomerSegment subject_segment = 3;
+  string plan_code = 4;
+  SubscriptionStatus status = 5;
+}
+
+message ActivateSubscriptionRequest {
+  string subject_id = 1;
+  CustomerSegment subject_segment = 2;
+  string plan_code = 3;
+}
+
+message CancelSubscriptionRequest {
+  string subject_id = 1;
+  CustomerSegment subject_segment = 2;
+}
+
+message GetEntitlementsRequest {
+  string subject_id = 1;
+  CustomerSegment subject_segment = 2;
+}
+
+message SubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+service SubscriptionService {
+  rpc Activate(ActivateSubscriptionRequest) returns (SubscriptionResponse);
+  rpc Cancel(CancelSubscriptionRequest) returns (SubscriptionResponse);
+  rpc GetEntitlements(GetEntitlementsRequest) returns (ResolveEntitlementsResponse);
+}
