@@ -73,4 +73,3 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata: {name: tektalk-server}
 spec: {minAvailable: 2, selector: {matchLabels: {app: tektalk-server}}}
-
