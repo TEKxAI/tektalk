@@ -45,4 +45,17 @@ jobs:
           kubectl apply -f "$RUNNER_TEMP/release.yaml"
           kubectl -n "$namespace" rollout status deployment/tektalk-business-solutions --timeout=300s
           kubectl -n "$namespace" rollout status deployment/tektalk-server --timeout=300s
+      - name: Verify public API
+        env: {BASE_URL: "${{ secrets.BASE_URL }}"}
+        run: |
+          test -n "$BASE_URL"
+          TEKTALK_BASE_URL="$BASE_URL" ./scripts/smoke-test.sh
+      - name: Roll back failed release
+        if: failure()
+        env: {TARGET_ENV: "${{ inputs.environment }}"}
+        run: |
+          namespace="tektalk-$TARGET_ENV"
+          kubectl -n "$namespace" rollout undo deployment/tektalk-server || true
+          kubectl -n "$namespace" rollout undo deployment/tektalk-business-solutions || true
+          kubectl -n "$namespace" rollout status deployment/tektalk-server --timeout=180s || true
 

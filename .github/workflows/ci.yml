@@ -18,6 +18,12 @@ jobs:
           ./scripts/validate-plugins.sh
       - name: Validate localization catalogs
         run: python3 scripts/validate-localization.py
+      - uses: azure/setup-kubectl@v4
+      - name: Render deployment overlays
+        run: |
+          for environment in sandbox staging production; do
+            kubectl kustomize "infra/k8s/overlays/$environment" >/dev/null
+          done
       - name: Validate Rust client-core ABI surface
         run: ./scripts/check_layout.sh
   rust:

@@ -20,5 +20,12 @@ jobs:
         id: meta
         with: {images: "ghcr.io/${{ github.repository }}/${{ matrix.name }}"}
       - uses: docker/build-push-action@v6
-        with: {context: ., file: "${{ matrix.dockerfile }}", push: true, tags: "${{ steps.meta.outputs.tags }}", labels: "${{ steps.meta.outputs.labels }}"}
+        with:
+          context: .
+          file: "${{ matrix.dockerfile }}"
+          push: true
+          tags: "${{ steps.meta.outputs.tags }}"
+          labels: "${{ steps.meta.outputs.labels }}"
+          provenance: mode=max
+          sbom: true
 
