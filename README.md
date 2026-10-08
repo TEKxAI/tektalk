@@ -13,7 +13,7 @@ The selected protocol, client, server, sync, delivery and media patterns are tra
 - Unknown-device challenge using the security question
 - Password reset through OTP and authenticated password change
 - Short-lived access tokens plus rotating refresh tokens
-- HTTPS REST for identity/bootstrap and encrypted WebSocket binary frames for realtime chat
+- HTTPS REST for identity/bootstrap; native TCP + MTProto 2.0 is the primary Chat transport with WSS fallback
 - One-to-one message send, acknowledgement, deduplication, ordering, and history
 - Native Android, iOS, macOS, and Windows clients with a shared Rust Core
 - PostgreSQL migrations, Scylla schema, Redis/Kafka integration points
@@ -28,7 +28,7 @@ The selected protocol, client, server, sync, delivery and media patterns are tra
 ```mermaid
 flowchart TB
     M["iOS / Android / macOS / Windows"] -->|"HTTPS: identity + bootstrap"| E["Rust edge/API"]
-    M -->|"WSS: encrypted binary frames"| G["Realtime gateway"]
+    M -->|"TCP primary · WSS fallback"| G["Realtime gateway"]
     E --> I["Identity domain"]
     G --> C["Chat domain"]
     I --> P[(PostgreSQL)]
@@ -36,6 +36,8 @@ flowchart TB
     G --> R[(Redis)]
     C -. "async events" .-> K[(Kafka/Redpanda)]
 ```
+
+Transport selection is owned by the shared Rust Core: native clients attempt TCP on port 443 first and fall back to WSS without changing the logical MTProto session. See `docs/realtime-transport-architecture.md`.
 
 The original Rust edge remains available for the first vertical slice. Account, OTT chat, session management and consent management also run as independent gRPC processes and containers, providing an executable migration path to the target microservice architecture. See `docs/architecture.md` and `protocol/mtproto-2.0.md`.
 

@@ -8,7 +8,7 @@ This document describes the code currently shipped in this repository. Reliabili
 
 1. The client authenticates over HTTPS and requests a one-use realtime ticket.
 2. The server returns the ticket and its ephemeral X25519 public key.
-3. The client connects to `wss://host/v1/realtime/connect?ticket=...` and sends its 32-byte ephemeral X25519 public key.
+3. The native client first connects to the advertised TCP endpoint on port 443; if native TCP is unavailable it connects to `wss://host/v1/realtime/connect?ticket=...`. It then sends its 32-byte ephemeral X25519 public key.
 4. Both peers calculate the X25519 shared secret and expand a 256-byte MTProto authorization key with HKDF-SHA256 using salt `tektalk-mtproto-bootstrap-v1` and info `mtproto-auth-key`.
 5. Every following binary WebSocket message contains one MTProto 2.0 encrypted message.
 
@@ -46,4 +46,4 @@ The current vertical slice carries TEKtalk JSON commands inside the MTProto mess
 
 ## Transport
 
-The runnable client and server carry encrypted messages over secure WebSocket. MTProto transport framing and the encryption envelope are separate layers; the repository also contains an abridged-transport encoder for the planned native MTProto TCP adapter.
+Native clients use persistent TCP with MTProto abridged framing as the primary Chat transport. Secure WebSocket carries the identical MTProto frames as the mandatory fallback. Transport selection and failover belong to Rust Core and preserve the logical MTProto session. HTTPS remains the authentication/bootstrap control plane. See `docs/realtime-transport-architecture.md`.
