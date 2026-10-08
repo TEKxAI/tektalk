@@ -20,6 +20,7 @@ spec:
           image: ghcr.io/tekxai/tektalk/business-solutions:latest
           ports: [{name: grpc, containerPort: 50056}]
           env: [{name: SERVICE_BIND, value: "0.0.0.0:50056"}]
+          envFrom: [{secretRef: {name: tektalk-server-secrets}}]
           readinessProbe: {tcpSocket: {port: grpc}, initialDelaySeconds: 2, periodSeconds: 5}
           livenessProbe: {tcpSocket: {port: grpc}, initialDelaySeconds: 10, periodSeconds: 10}
           resources:

@@ -6,7 +6,9 @@ license.workspace = true
 
 [dependencies]
 anyhow = "1"
+async-trait = "0.1"
 dashmap = "6"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid"] }
 tektalk-contracts = { path = "../contracts-rust" }
 tektalk-product-catalog = { path = "../product-catalog" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }

@@ -151,6 +151,7 @@ services:
       dockerfile: services/business-solutions/Dockerfile
     environment:
       SERVICE_BIND: 0.0.0.0:50056
+      DATABASE_URL: postgres://chat:chat@postgres:5432/chat
       RUST_LOG: tektalk_business_solutions=info
     ports: ["50056:50056"]
     healthcheck:
