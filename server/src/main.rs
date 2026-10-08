@@ -23,6 +23,9 @@ async fn main()->anyhow::Result<()>{
     let business_channel=tonic::transport::Endpoint::from_shared(config.business_solutions_url.clone())?.connect_lazy();
     let message_ids=Arc::new(SnowflakeGenerator::new(config.snowflake_node_id)?);
     let state=AppState{config:config.clone(),db,redis,business_channel,online:Arc::new(DashMap::new()),tickets:Arc::new(DashMap::new()),message_ids};
+    let tcp_listener=tokio::net::TcpListener::bind(config.realtime_tcp_bind).await?;
+    tracing::info!(address=%config.realtime_tcp_bind,"raw TCP realtime listener started");
+    tokio::spawn(realtime::serve_tcp(tcp_listener,state.clone()));
     let app=Router::new()
         .route("/healthz",get(||async{"ok"})).route("/readyz",get(ready))
         .route("/v1/auth/register",post(auth::register)).route("/v1/auth/login",post(auth::login)).route("/v1/auth/device/verify",post(auth::verify_device)).route("/v1/auth/password/reset/request",post(auth::request_reset)).route("/v1/auth/password/reset/confirm",post(auth::reset_password)).route("/v1/auth/password/change",post(auth::change_password))

@@ -67,7 +67,10 @@ services:
       SCYLLA_NODES: scylla:9042
       KAFKA_BROKERS: redpanda:9092
       SNOWFLAKE_NODE_ID: 0
-    ports: ["8080:8080"]
+      REALTIME_TCP_BIND: 0.0.0.0:8081
+      REALTIME_TCP_PUBLIC: tcp://localhost:8081
+      REALTIME_WSS_PUBLIC: ws://localhost:8080/v1/realtime/connect
+    ports: ["8080:8080", "8081:8081"]
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
