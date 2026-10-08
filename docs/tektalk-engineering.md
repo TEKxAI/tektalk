@@ -10,7 +10,7 @@ TEKtalk is a reusable technology-learning template. The selection rule is pragma
 | Session | Stable logical session independent of a physical connection | Persist session identity and resume after reconnect | P0 |
 | Delivery | Snowflake persisted IDs; MTProto time/parity IDs; sequence numbers, ACK, resend and deduplication | Shared generators implemented; add explicit service messages and a bounded resend queue | P0 |
 | Batching | Message containers and acknowledgements for multiple messages | Add size/time-bounded containers after single-message correctness | P1 |
-| Transport | Encryption envelope separated from WebSocket, TCP or QUIC carrier | Keep WSS default; provide adapters behind one interface | P1 |
+| Transport | Encryption envelope separated from TCP, WebSocket or QUIC carrier | Native TCP is primary; WSS is mandatory fallback behind Rust TransportManager | P0 |
 | Data model | Local-first message database and server reconciliation | Introduce repositories, optimistic send states and gap recovery | P0 |
 | Sync | Difference-based updates instead of full conversation reload | Add per-user and per-conversation cursors with gap fetch | P1 |
 | Media | Upload parts, resumability, content hashes and CDN-friendly storage | Add object-storage adapter and encrypted upload sessions | P1 |
@@ -35,7 +35,7 @@ Both native clients expose the same conceptual components while remaining idioma
 | `AuthService` | Login, refresh, device challenge and recovery |
 | `AuthKeyStore` | Protect long-lived session/auth keys with Keychain or Android Keystore |
 | `MTProtoCodec` | Encrypt/decrypt envelopes and validate message invariants |
-| `Transport` | WSS connection lifecycle, heartbeat and network migration |
+| `TransportManager` | TCP-first selection, WSS fallback, heartbeat and network migration |
 | `SessionCoordinator` | Salt/session IDs, sequence numbers, ACK/resend and reconnect |
 | `MessageRepository` | Local database, optimistic state, deduplication and sync cursors |
 | `MediaTransfer` | Chunking, retry, hashing and background upload/download |

@@ -151,6 +151,34 @@ pub fn abridged_encode(payload: &[u8]) -> Result<Vec<u8>> {
     output.extend_from_slice(payload); Ok(output)
 }
 
+pub fn abridged_decode(input: &[u8]) -> Result<(Vec<u8>, usize)> {
+    let Some(&first) = input.first() else {
+        return Err(Error::Invalid("truncated abridged header"));
+    };
+    let (words, header_len) = if first < 0x7f {
+        (usize::from(first), 1usize)
+    } else {
+        if input.len() < 4 {
+            return Err(Error::Invalid("truncated abridged header"));
+        }
+        let words = u32::from_le_bytes([input[1], input[2], input[3], 0]) as usize;
+        (words, 4usize)
+    };
+    if words == 0 {
+        return Err(Error::Invalid("empty abridged payload"));
+    }
+    let payload_len = words
+        .checked_mul(4)
+        .ok_or(Error::Invalid("abridged payload overflow"))?;
+    let end = header_len
+        .checked_add(payload_len)
+        .ok_or(Error::Invalid("abridged frame overflow"))?;
+    if input.len() < end {
+        return Err(Error::Invalid("truncated abridged payload"));
+    }
+    Ok((input[header_len..end].to_vec(), end))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,4 +187,18 @@ mod tests {
     #[test] fn generated_ids_are_monotonic_and_directional() { for direction in [Direction::ClientToServer, Direction::ServerToClient] { let generator = MessageIdGenerator::new(direction); let first = generator.next_id().unwrap(); let second = generator.next_id().unwrap(); assert!(second > first); validate_message_id(first, direction).unwrap(); validate_message_id(second, direction).unwrap(); } }
     #[test] fn tampering_is_rejected() { let key = key(); let message = Message { server_salt: 1, session_id: 2, message_id: 0x1_0000_0000, sequence_no: 1, body: vec![1, 2, 3] }; let mut frame = encrypt(&key, &message, Direction::ClientToServer).unwrap(); *frame.last_mut().unwrap() ^= 1; assert!(decrypt(&key, &frame, Direction::ClientToServer).is_err()); }
     #[test] fn abridged_transport_encodes_word_count() { assert_eq!(abridged_encode(&[0; 8]).unwrap(), vec![2, 0, 0, 0, 0, 0, 0, 0, 0]); }
+    #[test] fn abridged_transport_round_trip() {
+        for payload in [vec![7; 8], vec![9; 508]] {
+            let encoded = abridged_encode(&payload).unwrap();
+            let (decoded, consumed) = abridged_decode(&encoded).unwrap();
+            assert_eq!(decoded, payload);
+            assert_eq!(consumed, encoded.len());
+        }
+    }
+    #[test] fn abridged_transport_rejects_truncation_and_empty_frames() {
+        assert!(abridged_decode(&[]).is_err());
+        assert!(abridged_decode(&[0]).is_err());
+        assert!(abridged_decode(&[2, 0, 0, 0]).is_err());
+        assert!(abridged_decode(&[0x7f, 2, 0]).is_err());
+    }
 }

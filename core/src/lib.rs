@@ -6,6 +6,7 @@
 pub mod id;
 pub mod mtproto;
 pub mod plugin;
+pub mod transport;
 
 #[cfg(target_os = "android")]
 mod android_jni;
