@@ -63,10 +63,10 @@ For shared environments, replace this imperative example with External Secrets, 
 
 ## Apply the template
 
-Update the image in `infra/k8s/base.yaml` to the immutable tag produced by the release workflow, then apply:
+Update the image in `infra/k8s/base/resources.yaml` to the immutable tag produced by the release workflow, then apply the Kustomize base:
 
 ```bash
-kubectl -n tektalk apply -f infra/k8s/base.yaml
+kubectl -n tektalk apply -k infra/k8s/base
 kubectl -n tektalk rollout status deployment/tektalk-server --timeout=180s
 kubectl -n tektalk get pods,service,hpa,pdb
 kubectl -n tektalk port-forward service/tektalk-server 8080:80

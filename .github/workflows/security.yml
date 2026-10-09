@@ -4,7 +4,7 @@ on:
   pull_request:
   schedule: [{cron: "17 2 * * 1"}]
   workflow_dispatch:
-permissions: {contents: read, security-events: write}
+permissions: {contents: read, checks: write, security-events: write}
 jobs:
   dependencies:
     runs-on: ubuntu-latest
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .

@@ -5,6 +5,7 @@ COPY core core
 COPY server server
 COPY services services
 COPY contracts contracts
+COPY infra infra
 RUN cargo build --release -p tektalk-business-solutions
 
 FROM debian:bookworm-slim
