@@ -3,7 +3,7 @@ use axum::{extract::State,routing::{get,post},Router};
 use dashmap::DashMap;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
-use tower_http::{cors::CorsLayer,trace::TraceLayer};
+use tower_http::{cors::CorsLayer,services::ServeDir,trace::TraceLayer};
 use tracing_subscriber::EnvFilter;
 use crate::{config::Config,state::AppState};
 use tektalk_client_core::id::SnowflakeGenerator;
@@ -32,6 +32,7 @@ async fn main()->anyhow::Result<()>{
         .route("/v1/chat/messages/send",post(chat_http::send)).route("/v1/chat/messages/history",post(chat_http::history))
         .route("/v1/commerce/plans",get(commerce::list_plans)).route("/v1/commerce/subscription",post(commerce::activate).delete(commerce::cancel)).route("/v1/commerce/entitlements",get(commerce::entitlements))
         .route("/v1/realtime/bootstrap",post(realtime::bootstrap)).route("/v1/realtime/connect",get(realtime::socket))
+        .fallback_service(ServeDir::new("clients/web").append_index_html_on_directories(true))
         .layer(TraceLayer::new_for_http()).layer(CorsLayer::permissive()).with_state(state);
     let listener=tokio::net::TcpListener::bind(config.bind).await?;
     tracing::info!(address=%config.bind,"server started");axum::serve(listener,app).await?;Ok(())

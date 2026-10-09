@@ -1,6 +1,10 @@
-.PHONY: dev test fmt lint infra-up infra-down local-up local-down local-reset smoke logs
+.PHONY: dev web-dev web-check test fmt lint infra-up infra-down local-up local-down local-reset smoke logs
 dev:
 	cargo run -p chat-server
+web-dev:
+	./scripts/web-dev.sh
+web-check:
+	./scripts/validate-web.sh
 test:
 	cargo test --workspace
 fmt:

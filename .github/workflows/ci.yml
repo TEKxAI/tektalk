@@ -57,6 +57,23 @@ jobs:
         with:
           name: rust-coverage
           path: coverage/rust
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate zero-build Web client
+        run: ./scripts/validate-web.sh
+      - name: Smoke-test static development server
+        run: |
+          python3 -m http.server 5173 --bind 127.0.0.1 --directory clients/web >/tmp/tektalk-web.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in 1 2 3 4 5; do
+            curl --fail --silent http://127.0.0.1:5173/ >/dev/null && break
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:5173/styles.css >/dev/null
+          curl --fail --silent http://127.0.0.1:5173/app.js >/dev/null
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 30

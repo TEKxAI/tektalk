@@ -44,6 +44,7 @@ echo "Running API smoke test..."
 
 echo
 echo "TEKtalk is ready:"
+echo "  Web demo:   http://localhost:8080/"
 echo "  API/health: http://localhost:8080/healthz"
 echo "  PostgreSQL: localhost:5432"
 echo "  Redis:      localhost:6379"

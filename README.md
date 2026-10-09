@@ -15,7 +15,7 @@ The selected protocol, client, server, sync, delivery and media patterns are tra
 - Short-lived access tokens plus rotating refresh tokens
 - HTTPS REST for identity/bootstrap; native TCP + MTProto 2.0 is the primary Chat transport with WSS fallback
 - One-to-one message send, acknowledgement, deduplication, ordering, and history
-- Native Android, iOS, macOS, and Windows clients with a shared Rust Core
+- Native Android, iOS, macOS, and Windows clients with a shared Rust Core, plus a zero-build Web client
 - PostgreSQL migrations, Scylla schema, Redis/Kafka integration points
 - Docker Compose local dependencies, Kubernetes manifests, OpenTelemetry hooks, and CI
 - Independent gRPC services for account, OTT chat, L0/L1/L2 sessions, and consent
@@ -53,6 +53,8 @@ make local-up
 
 This generates local secrets in the ignored `.env`, builds and starts the complete stack, waits for every service to become healthy, and runs an API smoke test. Health check: `curl http://localhost:8080/healthz`. Internal gRPC endpoints are exposed locally on ports 50051–50055 for learning and integration tests; they must not be internet-facing in production.
 
+Open <http://localhost:8080/> for the responsive Web demo. It supports Vietnamese/English, light/dark themes, registration, login, device verification, demo messaging, and real backend delivery. For frontend-only development use `make web-dev`; see `clients/web/README.md`.
+
 Use `make logs`, `make smoke`, and `make local-down`. `make local-reset` additionally deletes the local data volumes.
 
 Run tests with `cargo test --workspace`. Android opens from `clients/android` in Android Studio. Add `clients/ios` files to an Xcode iOS App target and set `API_BASE_URL` and `REALTIME_URL` in its Info.plist.
@@ -79,6 +81,7 @@ The realtime protocol uses the MTProto 2.0 established-session envelope, SHA-256
 - `clients/ios/` Swift client core and SwiftUI sample
 - `clients/macos/` native SwiftUI/AppKit desktop client
 - `clients/windows/` native C++/WinRT and WinUI 3 desktop client
+- `clients/web/` responsive HTML/CSS/JavaScript client served by the Rust edge
 - `infra/` database, Kubernetes, and observability configuration
 - `docs/` architecture, authentication flows, runbook, and threat model
 
