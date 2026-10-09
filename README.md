@@ -1,4 +1,4 @@
-# TEKtalk Chat Learning Template
+# The **TEK@**talk application, featuring Viber coding by AI, inspired by OTT
 
 Reusable educational template for studying a mobile chat system with native iOS and Android clients, a Rust edge/API service, an MTProto 2.0 established-session encrypted envelope, PostgreSQL identity state, Redis ephemeral state, and extension points for ScyllaDB and Kafka-compatible events.
 
