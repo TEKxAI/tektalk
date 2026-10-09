@@ -8,7 +8,7 @@ license.workspace = true
 anyhow = "1"
 async-trait = "0.1"
 dashmap = "6"
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "postgres", "uuid", "macros", "migrate"] }
 tektalk-contracts = { path = "../contracts-rust" }
 tektalk-product-catalog = { path = "../product-catalog" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
