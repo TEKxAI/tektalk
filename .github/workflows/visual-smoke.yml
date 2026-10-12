@@ -31,7 +31,7 @@ jobs:
           const browser = await chromium.launch({headless: true});
           const page = await browser.newPage({viewport: {width: 1440, height: 960}, deviceScaleFactor: 1});
           await page.goto('http://127.0.0.1:5173', {waitUntil: 'networkidle'});
-          await page.getByRole('button', {name: /demo|trải nghiệm/i}).click();
+          await page.locator('#demoButton').click();
           await page.screenshot({path: 'screenshots/web-messages.png', fullPage: true});
           await page.locator('[data-tab="ai"]').click();
           await page.screenshot({path: 'screenshots/web-ai.png', fullPage: true});
@@ -122,7 +122,7 @@ jobs:
       - uses: microsoft/setup-msbuild@v2
       - name: Build Windows client
         shell: pwsh
-        run: msbuild clients/windows/TEKtalk.Windows.sln /restore /m /p:Configuration=Release /p:Platform=x64
+        run: msbuild clients/windows/TEKtalk.Windows/TEKtalk.Windows.vcxproj /restore /m /p:Configuration=Release /p:Platform=x64
       - name: Launch and capture Windows client
         shell: pwsh
         run: |
