@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="AuthHero" xml:space="preserve"><value>Native messaging for Windows&#xA;Powered by shared Rust Core</value></data>
+  <data name="CoreConnected" xml:space="preserve"><value>✓ Rust Core connected</value></data>
+  <data name="CoreFallback" xml:space="preserve"><value>Rust Core development fallback</value></data>
+  <data name="CreateAccount" xml:space="preserve"><value>Create account</value></data>
+  <data name="SignIn" xml:space="preserve"><value>Sign in</value></data>
+  <data name="VerifyDevice" xml:space="preserve"><value>Verify device</value></data>
+  <data name="PhoneE164" xml:space="preserve"><value>E.164 phone number</value></data>
+  <data name="DisplayName" xml:space="preserve"><value>Display name</value></data>
+  <data name="Password" xml:space="preserve"><value>Password</value></data>
+  <data name="SecurityQuestion" xml:space="preserve"><value>Security question</value></data>
+  <data name="DefaultSecurityQuestion" xml:space="preserve"><value>What is the name of your primary school?</value></data>
+  <data name="SecurityAnswer" xml:space="preserve"><value>Security answer</value></data>
+  <data name="AnswerChallenge" xml:space="preserve"><value>Answer the security question</value></data>
+  <data name="Register" xml:space="preserve"><value>Sign up</value></data>
+  <data name="SwitchToLogin" xml:space="preserve"><value>Already registered? Sign in</value></data>
+  <data name="SwitchToRegister" xml:space="preserve"><value>No account? Sign up</value></data>
+  <data name="InvalidCredentials" xml:space="preserve"><value>Check the E.164 number and strong password (10 characters, uppercase, number)</value></data>
+  <data name="Message" xml:space="preserve"><value>Messages</value></data>
+  <data name="Me" xml:space="preserve"><value>Me</value></data>
+  <data name="SyncHistory" xml:space="preserve"><value>Sync history</value></data>
+  <data name="MessageStartHint" xml:space="preserve"><value>Enter the conversation and recipient UUIDs</value></data>
+  <data name="ComposeMessage" xml:space="preserve"><value>Message</value></data>
+  <data name="Send" xml:space="preserve"><value>Send</value></data>
+  <data name="InvalidConversation" xml:space="preserve"><value>Invalid conversation UUID</value></data>
+  <data name="InvalidMessage" xml:space="preserve"><value>Check the conversation, recipient, and content</value></data>
+  <data name="SyncedPrefix" xml:space="preserve"><value>Synced </value></data>
+  <data name="MessagesSuffix" xml:space="preserve"><value> messages</value></data>
+  <data name="SentSnowflake" xml:space="preserve"><value>Sent • Snowflake </value></data>
+  <data name="AiDescription" xml:space="preserve"><value>The signed AI plugin is ready for delivery.</value></data>
+  <data name="User" xml:space="preserve"><value>User</value></data>
+  <data name="Device" xml:space="preserve"><value>Device</value></data>
+  <data name="SignOut" xml:space="preserve"><value>Sign out</value></data>
+  <data name="RustCoreConnectedLabel" xml:space="preserve"><value>Rust Core: Connected</value></data>
+  <data name="RustCoreFallbackLabel" xml:space="preserve"><value>Rust Core: Fallback</value></data>
+</root>

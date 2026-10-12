@@ -33,6 +33,14 @@ def android_keys(path: Path) -> set[str]:
     return set(keys)
 
 
+def resw_keys(path: Path) -> set[str]:
+    root = ET.parse(path).getroot()
+    keys = [item.attrib["name"] for item in root.findall("data")]
+    if len(keys) != len(set(keys)):
+        raise ValueError(f"{path}: duplicate resource name")
+    return set(keys)
+
+
 def compare(canonical: Path, translation: Path, parser) -> list[str]:
     base = parser(canonical)
     translated = parser(translation)
@@ -51,6 +59,7 @@ def main() -> int:
         (ROOT / "clients/ios/TEKtalk/en.lproj/Localizable.strings", ROOT / "clients/ios/TEKtalk/vi.lproj/Localizable.strings", apple_keys),
         (ROOT / "clients/macos/TEKtalkMac/en.lproj/Localizable.strings", ROOT / "clients/macos/TEKtalkMac/vi.lproj/Localizable.strings", apple_keys),
         (ROOT / "clients/android/app/src/main/res/values/strings.xml", ROOT / "clients/android/app/src/main/res/values-vi/strings.xml", android_keys),
+        (ROOT / "clients/windows/TEKtalk.Windows/Strings/en-US/Resources.resw", ROOT / "clients/windows/TEKtalk.Windows/Strings/vi-VN/Resources.resw", resw_keys),
     ]
     errors: list[str] = []
     try:

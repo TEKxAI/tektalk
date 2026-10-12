@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="AuthHero" xml:space="preserve"><value>Nhắn tin native cho Windows&#xA;Vận hành bởi Rust Core dùng chung</value></data>
+  <data name="CoreConnected" xml:space="preserve"><value>✓ Rust Core đã kết nối</value></data>
+  <data name="CoreFallback" xml:space="preserve"><value>Rust Core đang dùng chế độ phát triển dự phòng</value></data>
+  <data name="CreateAccount" xml:space="preserve"><value>Tạo tài khoản</value></data>
+  <data name="SignIn" xml:space="preserve"><value>Đăng nhập</value></data>
+  <data name="VerifyDevice" xml:space="preserve"><value>Xác minh thiết bị</value></data>
+  <data name="PhoneE164" xml:space="preserve"><value>Số điện thoại E.164</value></data>
+  <data name="DisplayName" xml:space="preserve"><value>Tên hiển thị</value></data>
+  <data name="Password" xml:space="preserve"><value>Mật khẩu</value></data>
+  <data name="SecurityQuestion" xml:space="preserve"><value>Câu hỏi bảo mật</value></data>
+  <data name="DefaultSecurityQuestion" xml:space="preserve"><value>Tên trường tiểu học của bạn?</value></data>
+  <data name="SecurityAnswer" xml:space="preserve"><value>Câu trả lời bảo mật</value></data>
+  <data name="AnswerChallenge" xml:space="preserve"><value>Trả lời câu hỏi bảo mật</value></data>
+  <data name="Register" xml:space="preserve"><value>Đăng ký</value></data>
+  <data name="SwitchToLogin" xml:space="preserve"><value>Đã có tài khoản? Đăng nhập</value></data>
+  <data name="SwitchToRegister" xml:space="preserve"><value>Chưa có tài khoản? Đăng ký</value></data>
+  <data name="InvalidCredentials" xml:space="preserve"><value>Kiểm tra số E.164 và mật khẩu mạnh (10 ký tự, chữ hoa, chữ số)</value></data>
+  <data name="Message" xml:space="preserve"><value>Tin nhắn</value></data>
+  <data name="Me" xml:space="preserve"><value>Tôi</value></data>
+  <data name="SyncHistory" xml:space="preserve"><value>Đồng bộ lịch sử</value></data>
+  <data name="MessageStartHint" xml:space="preserve"><value>Nhập conversation và recipient UUID</value></data>
+  <data name="ComposeMessage" xml:space="preserve"><value>Tin nhắn</value></data>
+  <data name="Send" xml:space="preserve"><value>Gửi</value></data>
+  <data name="InvalidConversation" xml:space="preserve"><value>Conversation UUID không hợp lệ</value></data>
+  <data name="InvalidMessage" xml:space="preserve"><value>Kiểm tra conversation, recipient và nội dung</value></data>
+  <data name="SyncedPrefix" xml:space="preserve"><value>Đã đồng bộ </value></data>
+  <data name="MessagesSuffix" xml:space="preserve"><value> tin</value></data>
+  <data name="SentSnowflake" xml:space="preserve"><value>Đã gửi • Snowflake </value></data>
+  <data name="AiDescription" xml:space="preserve"><value>Plugin AI đã ký sẵn sàng để phân phối.</value></data>
+  <data name="User" xml:space="preserve"><value>Người dùng</value></data>
+  <data name="Device" xml:space="preserve"><value>Thiết bị</value></data>
+  <data name="SignOut" xml:space="preserve"><value>Đăng xuất</value></data>
+  <data name="RustCoreConnectedLabel" xml:space="preserve"><value>Rust Core: Đã kết nối</value></data>
+  <data name="RustCoreFallbackLabel" xml:space="preserve"><value>Rust Core: Dự phòng</value></data>
+</root>

@@ -4,6 +4,7 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Globalization.h>
+#include <winrt/Windows.ApplicationModel.Resources.h>
 #include <winrt/Windows.Storage.Streams.h>
 #include <winrt/Windows.Data.Json.h>
 #include <winrt/Windows.UI.Text.h>
