@@ -56,15 +56,28 @@ jobs:
       - name: Build, boot and capture Android client
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           arch: x86_64
-          profile: pixel_6
-          disable-animations: true
+          profile: pixel_2
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
+            set -euo pipefail
             gradle -p clients/android :app:assembleDebug
             adb install -r clients/android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell input keyevent KEYCODE_WAKEUP
+            adb shell wm dismiss-keyguard
+            adb shell am force-stop com.android.systemui || true
+            sleep 3
             adb shell am start -W -n vn.tektalk/.presentation.MainActivity
-            sleep 5
+            for attempt in $(seq 1 20); do
+              focus=$(adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || true)
+              echo "$focus"
+              if echo "$focus" | grep -q 'vn.tektalk'; then break; fi
+              sleep 2
+            done
+            echo "$focus" | grep -q 'vn.tektalk' || { adb logcat -d -t 300; exit 1; }
+            sleep 3
             mkdir -p screenshots
             adb exec-out screencap -p > screenshots/android.png
       - uses: actions/upload-artifact@v4
@@ -127,15 +140,38 @@ jobs:
         run: |
           $exe = Get-ChildItem clients/windows -Recurse -Filter TEKtalk.exe | Where-Object FullName -Match 'Release' | Select-Object -First 1
           if (-not $exe) { throw 'TEKtalk.exe was not produced' }
-          Start-Process $exe.FullName
-          Start-Sleep -Seconds 8
+          $process = Start-Process $exe.FullName -PassThru
+          for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            Start-Sleep -Milliseconds 500
+            $process.Refresh()
+            if ($process.HasExited) { throw "TEKtalk.exe exited with code $($process.ExitCode)" }
+            if ($process.MainWindowHandle -ne 0) { break }
+          }
+          if ($process.MainWindowHandle -eq 0) { throw 'TEKtalk window was not created' }
           New-Item -ItemType Directory -Force screenshots | Out-Null
           Add-Type -AssemblyName System.Windows.Forms
           Add-Type -AssemblyName System.Drawing
-          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          $image = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          Add-Type @'
+          using System;
+          using System.Runtime.InteropServices;
+          public static class NativeWindow {
+            [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+            [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int command);
+            [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+          }
+          '@
+          [NativeWindow]::ShowWindow($process.MainWindowHandle, 9) | Out-Null
+          [NativeWindow]::SetForegroundWindow($process.MainWindowHandle) | Out-Null
+          Start-Sleep -Seconds 2
+          $rect = New-Object NativeWindow+RECT
+          if (-not [NativeWindow]::GetWindowRect($process.MainWindowHandle, [ref]$rect)) { throw 'Could not read TEKtalk window bounds' }
+          $width = $rect.Right - $rect.Left
+          $height = $rect.Bottom - $rect.Top
+          if ($width -lt 320 -or $height -lt 240) { throw "Invalid TEKtalk window size: ${width}x${height}" }
+          $image = New-Object System.Drawing.Bitmap $width, $height
           $graphics = [System.Drawing.Graphics]::FromImage($image)
-          $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $graphics.CopyFromScreen((New-Object System.Drawing.Point $rect.Left, $rect.Top), [System.Drawing.Point]::Empty, (New-Object System.Drawing.Size $width, $height))
           $image.Save((Join-Path $PWD 'screenshots/windows.png'), [System.Drawing.Imaging.ImageFormat]::Png)
           $graphics.Dispose(); $image.Dispose()
       - uses: actions/upload-artifact@v4
