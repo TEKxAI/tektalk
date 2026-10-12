@@ -1,0 +1,159 @@
+name: Visual smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "clients/**"
+      - "crates/client-core/**"
+      - "scripts/visual/**"
+      - ".github/workflows/visual-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - run: npm install --no-save playwright@1.55.1 && npx playwright install --with-deps chromium
+      - run: python3 -m http.server 5173 --directory clients/web >/tmp/tektalk-web.log 2>&1 &
+      - name: Capture running Web client
+        run: |
+          mkdir -p screenshots
+          cat > capture.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless: true});
+          const page = await browser.newPage({viewport: {width: 1440, height: 960}, deviceScaleFactor: 1});
+          await page.goto('http://127.0.0.1:5173', {waitUntil: 'networkidle'});
+          await page.getByRole('button', {name: /demo|trải nghiệm/i}).click();
+          await page.screenshot({path: 'screenshots/web-messages.png', fullPage: true});
+          await page.locator('[data-tab="ai"]').click();
+          await page.screenshot({path: 'screenshots/web-ai.png', fullPage: true});
+          await browser.close();
+          EOF
+          node capture.mjs
+      - uses: actions/upload-artifact@v4
+        with: {name: visual-web, path: screenshots/*.png}
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: "21"}
+      - uses: dtolnay/rust-toolchain@stable
+        with: {targets: x86_64-linux-android}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: "8.10.2"}
+      - run: cargo install cargo-ndk --locked
+      - run: cargo ndk -t x86_64 -o clients/android/app/src/main/jniLibs build --release -p tektalk-client-core
+      - name: Build, boot and capture Android client
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            gradle -p clients/android :app:assembleDebug
+            adb install -r clients/android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -W -n vn.tektalk/.presentation.MainActivity
+            sleep 5
+            mkdir -p screenshots
+            adb exec-out screencap -p > screenshots/android.png
+      - uses: actions/upload-artifact@v4
+        with: {name: visual-android, path: screenshots/*.png}
+
+  apple:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: brew install xcodegen
+      - name: Build macOS shared Rust core
+        run: bash scripts/build-core-macos.sh
+      - name: Build and capture iOS client
+        run: |
+          set -euo pipefail
+          mkdir -p screenshots
+          cd clients/ios
+          xcodegen generate
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for xs in d.values() for x in xs if x["name"].startswith("iPhone") and x["isAvailable"]))')
+          xcrun simctl boot "$UDID" || true
+          open -a Simulator
+          xcrun simctl bootstatus "$UDID" -b
+          xcodebuild -project TEKtalk.xcodeproj -scheme TEKtalk -configuration Debug -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath build build CODE_SIGNING_ALLOWED=NO
+          APP=$(find build/Build/Products -path '*iphonesimulator/TEKtalk.app' -print -quit)
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" vn.tektalk.ios
+          sleep 5
+          xcrun simctl io "$UDID" screenshot ../../screenshots/ios.png
+      - name: Build and capture macOS client
+        run: |
+          set -euo pipefail
+          cd clients/macos
+          xcodegen generate
+          xcodebuild -project TEKtalkMac.xcodeproj -scheme TEKtalkMac -configuration Debug -derivedDataPath build build CODE_SIGNING_ALLOWED=NO
+          APP=$(find build/Build/Products -path '*/TEKtalkMac.app' -print -quit)
+          open "$APP"
+          sleep 5
+          screencapture -x ../../screenshots/macos.png
+      - uses: actions/upload-artifact@v4
+        with: {name: visual-apple, path: screenshots/*.png}
+
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release -p tektalk-client-core
+      - name: Prepare Rust core
+        shell: pwsh
+        run: Copy-Item target/release/tektalk_client_core.dll clients/windows/TEKtalk.Windows/tektalk_client_core.dll
+      - uses: microsoft/setup-msbuild@v2
+      - name: Build Windows client
+        shell: pwsh
+        run: msbuild clients/windows/TEKtalk.Windows.sln /restore /m /p:Configuration=Release /p:Platform=x64
+      - name: Launch and capture Windows client
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem clients/windows -Recurse -Filter TEKtalk.exe | Where-Object FullName -Match 'Release' | Select-Object -First 1
+          if (-not $exe) { throw 'TEKtalk.exe was not produced' }
+          Start-Process $exe.FullName
+          Start-Sleep -Seconds 8
+          New-Item -ItemType Directory -Force screenshots | Out-Null
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $image = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          $graphics = [System.Drawing.Graphics]::FromImage($image)
+          $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $image.Save((Join-Path $PWD 'screenshots/windows.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+          $graphics.Dispose(); $image.Dispose()
+      - uses: actions/upload-artifact@v4
+        with: {name: visual-windows, path: screenshots/*.png}
+
+  gif:
+    needs: [web, android, apple, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {pattern: visual-*, path: screenshots, merge-multiple: true}
+      - run: python3 -m pip install --disable-pip-version-check Pillow==11.3.0
+      - run: python3 scripts/visual/make_platform_gif.py screenshots tektalk-platform-demo.gif
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tektalk-platform-demo
+          path: |
+            tektalk-platform-demo.gif
+            screenshots/*.png
