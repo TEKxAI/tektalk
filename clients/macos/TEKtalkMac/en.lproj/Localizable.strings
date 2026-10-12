@@ -16,4 +16,23 @@
 "message.compose" = "Message";
 "message.send" = "Send";
 "ai.plugin_description" = "The signed AI assistant plugin is ready for delivery.";
+"auth.hero" = "Native messaging for macOS\nPowered by shared Rust Core";
+"auth.create_account" = "Create account";
+"auth.switch_to_register" = "No account? Sign up";
+"auth.switch_to_login" = "Already registered? Sign in";
+"auth.invalid_verification_session" = "Invalid verification session";
+"auth.default_security_question" = "What is the name of your primary school?";
+"core.connected" = "Rust Core connected";
+"core.fallback" = "Rust Core development fallback";
+"message.start_hint" = "Enter the conversation and recipient UUIDs";
+"message.conversation_uuid" = "Conversation UUID";
+"message.recipient_uuid" = "Recipient UUID";
+"message.invalid_conversation" = "Invalid conversation UUID";
+"message.synced_count" = "Synced %lld messages";
+"message.sent_id" = "Sent • ID %lld";
+"profile.user" = "User";
+"profile.device" = "Device";
+"profile.rust_core" = "Rust Core";
+"profile.connected" = "Connected";
+"profile.fallback" = "Fallback";
 

@@ -16,4 +16,23 @@
 "message.compose" = "Tin nhắn";
 "message.send" = "Gửi";
 "ai.plugin_description" = "Plugin AI đã ký sẵn sàng để phân phối.";
+"auth.hero" = "Nhắn tin native cho macOS\nVận hành bởi Rust Core dùng chung";
+"auth.create_account" = "Tạo tài khoản";
+"auth.switch_to_register" = "Chưa có tài khoản? Đăng ký";
+"auth.switch_to_login" = "Đã có tài khoản? Đăng nhập";
+"auth.invalid_verification_session" = "Phiên xác minh không hợp lệ";
+"auth.default_security_question" = "Tên trường tiểu học của bạn?";
+"core.connected" = "Rust Core đã kết nối";
+"core.fallback" = "Rust Core đang dùng chế độ phát triển dự phòng";
+"message.start_hint" = "Nhập conversation và recipient UUID";
+"message.conversation_uuid" = "Conversation UUID";
+"message.recipient_uuid" = "Recipient UUID";
+"message.invalid_conversation" = "Conversation UUID không hợp lệ";
+"message.synced_count" = "Đã đồng bộ %lld tin";
+"message.sent_id" = "Đã gửi • ID %lld";
+"profile.user" = "Người dùng";
+"profile.device" = "Thiết bị";
+"profile.rust_core" = "Rust Core";
+"profile.connected" = "Đã kết nối";
+"profile.fallback" = "Dự phòng";
 

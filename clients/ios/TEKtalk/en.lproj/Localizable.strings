@@ -17,4 +17,23 @@
 "message.compose" = "Message";
 "message.send" = "Send";
 "ai.plugin_description" = "The signed AI assistant plugin will be delivered by the platform.";
+"auth.tagline" = "Secure connection, instant messaging";
+"auth.create_core_account" = "Create a Core Platform account";
+"auth.switch_to_register" = "No account? Sign up";
+"auth.switch_to_login" = "Already registered? Sign in";
+"auth.invalid_verification_session" = "Invalid verification session";
+"auth.default_security_question" = "What is the name of your primary school?";
+"message.platform" = "OTT Platform";
+"message.api_description" = "Text messaging through the TEKtalk API";
+"message.start_hint" = "Enter both UUIDs to begin";
+"message.conversation_uuid" = "Conversation UUID";
+"message.recipient_uuid" = "Recipient UUID";
+"message.invalid_conversation" = "Invalid conversation UUID";
+"message.synced_count" = "Synced %lld messages";
+"call.not_available" = "Calls require production signaling/SFU";
+"profile.user" = "User";
+"profile.device" = "Device";
+"profile.rust_core" = "Rust Core";
+"profile.connected" = "Connected";
+"profile.development_fallback" = "Development fallback";
 

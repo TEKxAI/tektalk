@@ -17,4 +17,23 @@
 "message.compose" = "Tin nhắn";
 "message.send" = "Gửi";
 "ai.plugin_description" = "Trợ lý AI đã ký sẽ được phân phối bởi nền tảng.";
+"auth.tagline" = "Kết nối an toàn, trò chuyện tức thời";
+"auth.create_core_account" = "Tạo tài khoản Core Platform";
+"auth.switch_to_register" = "Chưa có tài khoản? Đăng ký";
+"auth.switch_to_login" = "Đã có tài khoản? Đăng nhập";
+"auth.invalid_verification_session" = "Phiên xác minh không hợp lệ";
+"auth.default_security_question" = "Tên trường tiểu học của bạn?";
+"message.platform" = "Nền tảng OTT";
+"message.api_description" = "Nhắn tin văn bản qua TEKtalk API";
+"message.start_hint" = "Nhập hai UUID để bắt đầu";
+"message.conversation_uuid" = "Conversation UUID";
+"message.recipient_uuid" = "Recipient UUID";
+"message.invalid_conversation" = "Conversation UUID không hợp lệ";
+"message.synced_count" = "Đã đồng bộ %lld tin";
+"call.not_available" = "Cuộc gọi cần signaling/SFU production";
+"profile.user" = "Người dùng";
+"profile.device" = "Thiết bị";
+"profile.rust_core" = "Rust Core";
+"profile.connected" = "Đã kết nối";
+"profile.development_fallback" = "Chế độ phát triển dự phòng";
 
