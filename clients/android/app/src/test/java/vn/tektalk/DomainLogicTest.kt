@@ -3,6 +3,7 @@ package vn.tektalk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import vn.tektalk.domain.*
 
 class DomainLogicTest {
     @Test fun loginAcceptsValidE164AndPassword() {
@@ -48,7 +49,7 @@ class DomainLogicTest {
         assertEquals(listOf(older, replayWithCanonicalBody), ChatLogic.merge(listOf(newer), listOf(older, replayWithCanonicalBody)))
     }
 
-    private fun message(id: Long, body: String) = ChatMessage(
+    private fun message(id: Long, body: String) = Message(
         id, "conversation", "sender", "recipient", "client-$id", body, "2026-09-29T00:00:00Z",
     )
 }

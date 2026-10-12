@@ -1,7 +1,7 @@
 #pragma once
 #include "MainWindow.g.h"
-#include "ApiClient.h"
-#include "RustCore.h"
+#include "Data/ApiClient.h"
+#include "Infrastructure/RustCore.h"
 namespace winrt::TEKtalk::implementation {
 struct MainWindow : MainWindowT<MainWindow> {
     MainWindow();

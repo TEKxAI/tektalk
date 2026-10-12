@@ -1,21 +1,8 @@
-package vn.tektalk
-
-enum class AuthMode { Login, Register, Verify }
-
-data class AuthForm(
-    val mode: AuthMode,
-    val phone: String = "",
-    val password: String = "",
-    val displayName: String = "",
-    val securityQuestion: String = "",
-    val securityAnswer: String = "",
-    val challengeId: String? = null,
-)
+package vn.tektalk.domain
 
 object AuthValidator {
     private val e164 = Regex("^\\+[1-9]\\d{7,14}$")
 
-    /** Returns a user-facing error, or null when the form can be submitted. */
     fun validate(form: AuthForm): String? = when (form.mode) {
         AuthMode.Verify -> when {
             form.challengeId.isNullOrBlank() -> "Phiên xác minh không hợp lệ"
@@ -33,8 +20,6 @@ object AuthValidator {
     }
 }
 
-data class ChatDraft(val conversationId: String, val recipientId: String, val text: String)
-
 object ChatLogic {
     fun validationError(draft: ChatDraft): String? = when {
         draft.conversationId.isBlank() -> "Thiếu conversation ID"
@@ -46,11 +31,9 @@ object ChatLogic {
         else -> null
     }
 
-    /** Merges server pages and optimistic updates without duplicate message IDs. */
-    fun merge(current: List<ChatMessage>, incoming: List<ChatMessage>): List<ChatMessage> =
-        (current + incoming).associateBy(ChatMessage::id).values.sortedBy(ChatMessage::id)
+    fun merge(current: List<Message>, incoming: List<Message>): List<Message> =
+        (current + incoming).associateBy(Message::id).values.sortedBy(Message::id)
 
-    private fun isUuid(value: String): Boolean = runCatching {
-        java.util.UUID.fromString(value.trim())
-    }.isSuccess
+    private fun isUuid(value: String) = runCatching { java.util.UUID.fromString(value.trim()) }.isSuccess
 }
+

@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ApiClient.h"
-#include "ClientLogic.h"
+#include "../Domain/ClientLogic.h"
 using namespace winrt; using namespace Windows::Foundation; using namespace Windows::Data::Json; using namespace Windows::Web::Http;
 namespace tektalk {
 ApiClient::ApiClient(hstring base) : base_(std::move(base)) {}

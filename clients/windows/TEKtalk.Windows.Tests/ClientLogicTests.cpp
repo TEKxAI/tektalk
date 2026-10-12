@@ -1,4 +1,4 @@
-#include "../TEKtalk.Windows/ClientLogic.h"
+#include "../TEKtalk.Windows/Domain/ClientLogic.h"
 #include <cassert>
 int main() {
     assert(tektalk::ValidE164(L"+84912345678"));
