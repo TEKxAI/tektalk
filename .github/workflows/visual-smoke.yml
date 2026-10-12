@@ -16,30 +16,29 @@ permissions:
 jobs:
   web:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: "22"}
+      - name: Start real backend stack
+        run: |
+          cp .env.example .env
+          sed -i "s/replace-with-at-least-32-random-bytes/$(openssl rand -hex 32)/" .env
+          sed -i "s/replace-with-an-independent-random-secret/$(openssl rand -hex 32)/" .env
+          docker compose up --build -d --wait --wait-timeout 600
       - run: npm install --no-save playwright@1.55.1 && npx playwright install --with-deps chromium
       - run: python3 -m http.server 5173 --directory clients/web >/tmp/tektalk-web.log 2>&1 &
-      - name: Capture running Web client
-        run: |
-          mkdir -p screenshots
-          cat > capture.mjs <<'EOF'
-          import { chromium } from 'playwright';
-          const browser = await chromium.launch({headless: true});
-          const page = await browser.newPage({viewport: {width: 1440, height: 960}, deviceScaleFactor: 1});
-          await page.goto('http://127.0.0.1:5173', {waitUntil: 'networkidle'});
-          await page.locator('#demoButton').click();
-          await page.screenshot({path: 'screenshots/web-messages.png', fullPage: true});
-          await page.locator('[data-tab="ai"]').click();
-          await page.screenshot({path: 'screenshots/web-ai.png', fullPage: true});
-          await browser.close();
-          EOF
-          node capture.mjs
+      - name: Capture register, login, verification and chat MVP
+        run: mkdir -p screenshots && node scripts/visual/capture_web_mvp.mjs
       - uses: actions/upload-artifact@v4
         with: {name: visual-web, path: screenshots/*.png}
+      - name: Show backend logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+      - name: Stop backend stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans
 
   android:
     runs-on: ubuntu-latest
