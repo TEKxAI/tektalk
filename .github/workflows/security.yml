@@ -14,7 +14,7 @@ jobs:
       - name: Generate dependency lockfile
         run: cargo generate-lockfile
       - name: Explain vulnerable RSA dependency path
-        run: cargo tree --invert rsa@0.9.10
+        run: cargo tree --target all --invert rsa@0.9.10
       - uses: rustsec/audit-check@v2
         with: {token: "${{ secrets.GITHUB_TOKEN }}"}
   filesystem:
