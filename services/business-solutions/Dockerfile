@@ -11,5 +11,7 @@ RUN cargo build --release -p tektalk-business-solutions
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates netcat-openbsd && rm -rf /var/lib/apt/lists/*
 COPY --from=build /src/target/release/business-solutions /usr/local/bin/business-solutions
+WORKDIR /app
+COPY infra/postgres /app/infra/postgres
 USER 65532:65532
 ENTRYPOINT ["/usr/local/bin/business-solutions"]
