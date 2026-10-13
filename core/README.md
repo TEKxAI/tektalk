@@ -1,6 +1,9 @@
 # TEKtalk shared Rust core
 
-The Rust core is the single implementation of deterministic cross-platform protocol/session state, MTProto 2.0 envelope cryptography, transport framing and the TCP-first/WSS-fallback policy. It also owns the production Snowflake generator used for persisted message IDs. Platform sockets, secure storage, background execution and OS capabilities remain behind Swift/Kotlin adapters. WebRTC and platform codecs remain isolated C/C++ dependencies when their upstream APIs require it.
+The Rust core is the single implementation of deterministic cross-platform protocol/session state, MTProto 2.0 envelope cryptography, transport framing and the TCP-first/WSS-fallback policy. It also owns the production Snowflake generator and encrypted SQLCipher persistence used by native clients. Platform sockets, secure-key protection, background execution and OS capabilities remain behind Swift/Kotlin/C++ adapters. WebRTC and platform codecs remain isolated C/C++ dependencies when their upstream APIs require it.
+
+See [`client-encrypted-storage.md`](../docs/client-encrypted-storage.md) for the
+account/conversation layout, shared schemas and platform key adapters.
 
 Build and test:
 
