@@ -19,7 +19,7 @@ async fn main()->anyhow::Result<()>{
     let config=Config::from_env()?;
     let db=PgPoolOptions::new().max_connections(30).connect(&config.database_url).await?;
     let migrations=std::env::var("TEKTALK_MIGRATIONS_DIR").unwrap_or_else(|_|"infra/postgres".into());
-    sqlx::migrate::Migrator::new(std::path::Path::new(&migrations)).await?.run(&db).await?;
+    sqlx_core::migrate::Migrator::new(std::path::Path::new(&migrations)).await?.run(&db).await?;
     let redis=redis::Client::open(config.redis_url.clone())?;
     let business_channel=tonic::transport::Endpoint::from_shared(config.business_solutions_url.clone())?.connect_lazy();
     let message_ids=Arc::new(SnowflakeGenerator::new(config.snowflake_node_id)?);
