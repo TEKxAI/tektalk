@@ -17,10 +17,14 @@ private func databaseOpenConversation(_ handle: UnsafeMutableRawPointer?, _ conv
 final class EncryptedDatabase {
     private var handle: UnsafeMutableRawPointer?
 
-    init(accountID: Int64) throws {
+    init(
+        accountID: Int64,
+        keyProvider: (Int64) throws -> Data = KeychainDatabaseKey.getOrCreate
+    ) throws {
         guard accountID > 0 else { throw DatabaseError.invalidAccount }
         let root = try Self.accountRoot(accountID: accountID)
-        var key = try KeychainDatabaseKey.getOrCreate(accountID: accountID)
+        var key = try keyProvider(accountID)
+        guard key.count == 32 else { throw DatabaseError.invalidStoredKey }
         defer { key.resetBytes(in: 0..<key.count) }
         handle = root.path.withCString { path in
             key.withUnsafeBytes { bytes in
