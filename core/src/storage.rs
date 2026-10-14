@@ -5,6 +5,7 @@
 
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     collections::{HashMap, VecDeque},
     fs,
@@ -16,6 +17,8 @@ use zeroize::Zeroize;
 
 pub const CURRENT_CATALOG_SCHEMA: i32 = 1;
 pub const CURRENT_CONVERSATION_SCHEMA: i32 = 1;
+pub const CURRENT_SEARCH_SCHEMA: i32 = 1;
+pub const CURRENT_JOBS_SCHEMA: i32 = 1;
 pub const CODEC_JSON_UTF8: i32 = 1;
 
 #[derive(Debug, Error)]
@@ -30,6 +33,10 @@ pub enum StorageError {
     HandleLimitReached,
     #[error("invalid database path")]
     InvalidPath,
+    #[error("migration {version} ({name}) checksum does not match the applied migration")]
+    MigrationChecksumMismatch { version: i32, name: &'static str },
+    #[error("database schema version {found} is newer than supported version {supported}")]
+    UnsupportedSchema { found: i32, supported: i32 },
     #[error(transparent)]
     Sql(#[from] rusqlite::Error),
     #[error(transparent)]
@@ -303,99 +310,97 @@ fn open_encrypted(path: &Path, key: &[u8; 32]) -> Result<Connection> {
 }
 
 fn migrate_catalog(db: &mut Connection) -> Result<()> {
-    let tx = db.transaction()?;
-    tx.execute_batch(
-        "CREATE TABLE IF NOT EXISTS schema_info(version INTEGER NOT NULL);
-         INSERT INTO schema_info(version) SELECT 0 WHERE NOT EXISTS(SELECT 1 FROM schema_info);
-         CREATE TABLE IF NOT EXISTS profiles(
-           profile_id INTEGER NOT NULL, profile_type INTEGER NOT NULL, display_name TEXT NOT NULL,
-           username TEXT, avatar_url TEXT, cover_url TEXT, cover_type INTEGER,
-           profile_version INTEGER NOT NULL, verification_state INTEGER NOT NULL DEFAULT 0,
-           relationship_state INTEGER NOT NULL DEFAULT 0, updated_at_ms INTEGER NOT NULL,
-           metadata_codec INTEGER NOT NULL, metadata_version INTEGER NOT NULL, metadata BLOB NOT NULL,
-           PRIMARY KEY(profile_type,profile_id)) WITHOUT ROWID;
-         CREATE TABLE IF NOT EXISTS conversations(
-           conversation_id INTEGER PRIMARY KEY, conversation_type INTEGER NOT NULL,
-           peer_id INTEGER NOT NULL, peer_type INTEGER NOT NULL, display_name TEXT NOT NULL,
-           display_avatar_url TEXT, display_badge INTEGER NOT NULL DEFAULT 0,
-           last_message_id INTEGER, last_message_sender_id INTEGER, last_message_sender_type INTEGER,
-           last_message_sender_name TEXT, last_message_type INTEGER, last_message_text TEXT,
-           last_message_at_ms INTEGER, last_message_flags INTEGER NOT NULL DEFAULT 0,
-           last_message_state INTEGER, draft_text TEXT, draft_updated_at_ms INTEGER,
-           unread_count INTEGER NOT NULL DEFAULT 0, mention_count INTEGER NOT NULL DEFAULT 0,
-           pinned_order INTEGER, muted_until_ms INTEGER, archived INTEGER NOT NULL DEFAULT 0,
-           local_db_state INTEGER NOT NULL DEFAULT 0, local_db_size INTEGER NOT NULL DEFAULT 0,
-           local_schema_version INTEGER, last_opened_at_ms INTEGER,
-           metadata_codec INTEGER NOT NULL, metadata_version INTEGER NOT NULL, metadata BLOB NOT NULL);
-         CREATE INDEX IF NOT EXISTS conversations_activity ON conversations(archived,pinned_order,last_message_at_ms DESC,conversation_id DESC);
-         CREATE INDEX IF NOT EXISTS conversations_peer ON conversations(peer_type,peer_id);"
-    )?;
-    set_schema_version(&tx, CURRENT_CATALOG_SCHEMA)?;
-    tx.commit()?;
-    Ok(())
+    apply_migrations(db, CATALOG_MIGRATIONS)
 }
 
 fn migrate_conversation(db: &mut Connection) -> Result<()> {
-    let tx = db.transaction()?;
-    tx.execute_batch(
-        "CREATE TABLE IF NOT EXISTS schema_info(version INTEGER NOT NULL);
-         INSERT INTO schema_info(version) SELECT 0 WHERE NOT EXISTS(SELECT 1 FROM schema_info);
-         CREATE TABLE IF NOT EXISTS messages(
-           local_id INTEGER PRIMARY KEY, message_id INTEGER, client_nonce INTEGER NOT NULL,
-           sender_id INTEGER NOT NULL, server_seq INTEGER, sent_at_ms INTEGER NOT NULL,
-           edited_at_ms INTEGER, message_type INTEGER NOT NULL, flags INTEGER NOT NULL DEFAULT 0,
-           payload_codec INTEGER NOT NULL, payload_version INTEGER NOT NULL, payload BLOB NOT NULL,
-           UNIQUE(message_id),UNIQUE(client_nonce));
-         CREATE INDEX IF NOT EXISTS messages_timeline ON messages(sent_at_ms DESC,local_id DESC);
-         CREATE UNIQUE INDEX IF NOT EXISTS messages_server_seq ON messages(server_seq) WHERE server_seq IS NOT NULL;
-         CREATE TABLE IF NOT EXISTS message_local_state(
-           local_id INTEGER PRIMARY KEY REFERENCES messages(local_id) ON DELETE CASCADE,
-           delivery_state INTEGER NOT NULL,retry_count INTEGER NOT NULL DEFAULT 0,next_retry_at_ms INTEGER,
-           upload_progress INTEGER,download_progress INTEGER,last_error_code INTEGER,updated_at_ms INTEGER NOT NULL);
-         CREATE TABLE IF NOT EXISTS reactions(
-           message_id INTEGER NOT NULL,actor_id INTEGER NOT NULL,reaction_type INTEGER NOT NULL,
-           reacted_at_ms INTEGER NOT NULL,metadata_codec INTEGER NOT NULL,metadata_version INTEGER NOT NULL,
-           metadata BLOB NOT NULL,PRIMARY KEY(message_id,actor_id,reaction_type)) WITHOUT ROWID;
-         CREATE TABLE IF NOT EXISTS projection_outbox(
-           event_id INTEGER PRIMARY KEY,event_type INTEGER NOT NULL,created_at_ms INTEGER NOT NULL,
-           processed_at_ms INTEGER,payload_codec INTEGER NOT NULL,payload_version INTEGER NOT NULL,payload BLOB NOT NULL);"
-    )?;
-    set_schema_version(&tx, CURRENT_CONVERSATION_SCHEMA)?;
-    tx.commit()?;
-    Ok(())
+    apply_migrations(db, CONVERSATION_MIGRATIONS)
 }
 
 fn migrate_search(db: &mut Connection) -> Result<()> {
-    let tx = db.transaction()?;
-    tx.execute_batch(
-        "CREATE TABLE IF NOT EXISTS schema_info(version INTEGER NOT NULL);
-         INSERT INTO schema_info(version) SELECT 0 WHERE NOT EXISTS(SELECT 1 FROM schema_info);
-         CREATE TABLE IF NOT EXISTS message_search(
-           conversation_id INTEGER NOT NULL,message_id INTEGER NOT NULL,sender_id INTEGER NOT NULL,
-           sent_at_ms INTEGER NOT NULL,normalized_text TEXT NOT NULL,content_type INTEGER NOT NULL,
-           PRIMARY KEY(conversation_id,message_id)) WITHOUT ROWID;
-         CREATE INDEX IF NOT EXISTS message_search_timeline ON message_search(conversation_id,sent_at_ms DESC,message_id DESC);
-         CREATE INDEX IF NOT EXISTS message_search_text ON message_search(normalized_text);"
-    )?;
-    set_schema_version(&tx, 1)?;
-    tx.commit()?;
-    Ok(())
+    apply_migrations(db, SEARCH_MIGRATIONS)
 }
 
 fn migrate_jobs(db: &mut Connection) -> Result<()> {
-    let tx = db.transaction()?;
-    tx.execute_batch(
+    apply_migrations(db, JOBS_MIGRATIONS)
+}
+
+#[derive(Clone, Copy)]
+struct Migration {
+    version: i32,
+    name: &'static str,
+    sql: &'static str,
+}
+
+const CATALOG_MIGRATIONS: &[Migration] = &[Migration {
+    version: CURRENT_CATALOG_SCHEMA,
+    name: "initial",
+    sql: include_str!("../migrations/catalog/V001__initial.sql"),
+}];
+const CONVERSATION_MIGRATIONS: &[Migration] = &[Migration {
+    version: CURRENT_CONVERSATION_SCHEMA,
+    name: "initial",
+    sql: include_str!("../migrations/conversation/V001__initial.sql"),
+}];
+const SEARCH_MIGRATIONS: &[Migration] = &[Migration {
+    version: CURRENT_SEARCH_SCHEMA,
+    name: "initial",
+    sql: include_str!("../migrations/search/V001__initial.sql"),
+}];
+const JOBS_MIGRATIONS: &[Migration] = &[Migration {
+    version: CURRENT_JOBS_SCHEMA,
+    name: "initial",
+    sql: include_str!("../migrations/jobs/V001__initial.sql"),
+}];
+
+fn apply_migrations(db: &mut Connection, migrations: &[Migration]) -> Result<()> {
+    let supported = migrations.last().map_or(0, |migration| migration.version);
+    let bootstrap = db.transaction()?;
+    bootstrap.execute_batch(
         "CREATE TABLE IF NOT EXISTS schema_info(version INTEGER NOT NULL);
          INSERT INTO schema_info(version) SELECT 0 WHERE NOT EXISTS(SELECT 1 FROM schema_info);
-         CREATE TABLE IF NOT EXISTS jobs(
-           job_id INTEGER PRIMARY KEY,job_type INTEGER NOT NULL,state INTEGER NOT NULL,
-           attempt_count INTEGER NOT NULL DEFAULT 0,next_attempt_at_ms INTEGER,last_error_code INTEGER,
-           created_at_ms INTEGER NOT NULL,updated_at_ms INTEGER,
-           payload_codec INTEGER NOT NULL,payload_version INTEGER NOT NULL,payload BLOB NOT NULL);
-         CREATE INDEX IF NOT EXISTS jobs_ready ON jobs(state,next_attempt_at_ms,created_at_ms);"
+         CREATE TABLE IF NOT EXISTS schema_migrations(
+           version INTEGER PRIMARY KEY,
+           name TEXT NOT NULL,
+           checksum BLOB NOT NULL,
+           applied_at_ms INTEGER NOT NULL
+         );",
     )?;
-    set_schema_version(&tx, 1)?;
-    tx.commit()?;
+    let found: i32 = bootstrap.query_row("SELECT version FROM schema_info LIMIT 1", [], |row| row.get(0))?;
+    if found > supported {
+        return Err(StorageError::UnsupportedSchema { found, supported });
+    }
+    bootstrap.commit()?;
+
+    for migration in migrations {
+        let checksum = Sha256::digest(migration.sql.as_bytes()).to_vec();
+        let applied: Option<Vec<u8>> = db
+            .query_row(
+                "SELECT checksum FROM schema_migrations WHERE version=?1",
+                [migration.version],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if let Some(applied) = applied {
+            if applied != checksum {
+                return Err(StorageError::MigrationChecksumMismatch {
+                    version: migration.version,
+                    name: migration.name,
+                });
+            }
+            continue;
+        }
+
+        let tx = db.transaction()?;
+        tx.execute_batch(migration.sql)?;
+        tx.execute(
+            "INSERT INTO schema_migrations(version,name,checksum,applied_at_ms)
+             VALUES(?1,?2,?3,unixepoch() * 1000)",
+            params![migration.version, migration.name, checksum],
+        )?;
+        set_schema_version(&tx, migration.version)?;
+        tx.commit()?;
+    }
     Ok(())
 }
 
@@ -443,6 +448,52 @@ mod tests {
         profile.display_name = "Stale".into();
         assert!(!store.upsert_profile(&profile).unwrap());
         drop(store);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn records_embedded_migration_version_and_checksum() {
+        let root = temp_root("migration-record");
+        let store = AccountStore::open(&root, &[10_u8; 32], 4).unwrap();
+        let catalog = store.catalog.lock().unwrap();
+        let (version, name, checksum_size): (i32, String, usize) = catalog
+            .query_row(
+                "SELECT version,name,length(checksum) FROM schema_migrations",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(version, CURRENT_CATALOG_SCHEMA);
+        assert_eq!(name, "initial");
+        assert_eq!(checksum_size, 32);
+        drop(catalog);
+        drop(store);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_changed_applied_migration_checksum() {
+        let root = temp_root("migration-checksum");
+        let key = [11_u8; 32];
+        let store = AccountStore::open(&root, &key, 4).unwrap();
+        store
+            .catalog
+            .lock()
+            .unwrap()
+            .execute(
+                "UPDATE schema_migrations SET checksum=?1 WHERE version=?2",
+                params![vec![0_u8; 32], CURRENT_CATALOG_SCHEMA],
+            )
+            .unwrap();
+        drop(store);
+
+        assert!(matches!(
+            AccountStore::open(&root, &key, 4),
+            Err(StorageError::MigrationChecksumMismatch {
+                version: CURRENT_CATALOG_SCHEMA,
+                name: "initial"
+            })
+        ));
         fs::remove_dir_all(root).unwrap();
     }
 }
