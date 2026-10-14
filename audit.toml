@@ -1,0 +1,6 @@
+[advisories]
+# rsa 0.9.10 is pulled transitively by SQLx tooling. TEKtalk does not use this
+# crate for network-facing RSA operations; authentication uses HS256 and the
+# local database uses SQLCipher. Upstream has no patched release as of the
+# advisory's latest update, so keep this narrow waiver until SQLx removes it.
+ignore = ["RUSTSEC-2023-0071"]
