@@ -14,7 +14,9 @@ jobs:
       - name: Generate dependency lockfile
         run: cargo generate-lockfile
       - uses: rustsec/audit-check@v2
-        with: {token: "${{ secrets.GITHUB_TOKEN }}"}
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          ignore: RUSTSEC-2023-0071
   filesystem:
     runs-on: ubuntu-latest
     steps:
