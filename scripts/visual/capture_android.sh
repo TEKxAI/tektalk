@@ -21,7 +21,7 @@ adb shell am start -W -n vn.tektalk/.presentation.MainActivity
 
 focused=false
 for attempt in {1..30}; do
-  focus=$(adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || true)
+  focus=$(adb shell dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' || true)
   if [[ "$focus" == *vn.tektalk* ]]; then
     focused=true
     break
