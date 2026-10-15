@@ -10,6 +10,13 @@ final class MVPFlowTests: XCTestCase {
         fixture = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String:String])
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
+        #if os(macOS)
+        if let ready=fixture["recording_ready"] {
+            let deadline=Date().addingTimeInterval(120)
+            while !FileManager.default.fileExists(atPath:ready) && Date() < deadline { Thread.sleep(forTimeInterval:0.2) }
+            XCTAssertTrue(FileManager.default.fileExists(atPath:ready), "Window recording did not start")
+        }
+        #endif
     }
     private func element(_ id: String) -> XCUIElement {
         let e = app.descendants(matching: .any).matching(identifier:id).firstMatch
@@ -81,5 +88,11 @@ final class MVPFlowTests: XCTestCase {
         tap("chat.sync")
         XCTAssertTrue(app.staticTexts[f["incoming"]!].firstMatch.waitForExistence(timeout:30))
         Thread.sleep(forTimeInterval:3)
+        #if os(macOS)
+        if let stop=fixture["recording_stop"] {
+            try Data().write(to:URL(fileURLWithPath:stop))
+            Thread.sleep(forTimeInterval:2)
+        }
+        #endif
     }
 }

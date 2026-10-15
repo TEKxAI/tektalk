@@ -28,20 +28,27 @@ python3 scripts/visual/scenario.py verify-existing --fixture clients/ios/TEKtalk
 python3 -c 'import json,pathlib;pathlib.Path("recordings/ios-flow.json").write_text(json.dumps(dict(platform="ios",registration=True,logout=True,login=True,verification=True,sent_and_received_in_ui=True)))'
 else
 python3 scripts/visual/scenario.py prepare --platform macos --fixture clients/macos/TEKtalkMacFlowTests/fixture.json
+python3 - <<'FIXTURE'
+import json
+from pathlib import Path
+p=Path('clients/macos/TEKtalkMacFlowTests/fixture.json');f=json.loads(p.read_text())
+f['recording_ready']=str(Path('recordings/macos-recorder.ready').resolve())
+f['recording_stop']=str(Path('recordings/macos-recorder.stop').resolve())
+p.write_text(json.dumps(f))
+FIXTURE
+swiftc -swift-version 5 -parse-as-library -target "$(uname -m)-apple-macosx15.0" scripts/visual/apple/RecordWindow.swift -o recordings/record-window
 cd clients/macos
 xcodegen generate
 xcodebuild build-for-testing -project TEKtalkMac.xcodeproj -scheme TEKtalkMacMVP -destination 'platform=macOS' -derivedDataPath build-mvp CODE_SIGNING_ALLOWED=NO > "$root/recordings/macos-build.log" 2>&1
-screencapture -v -V 600 -C -x "$root/recordings/macos.mov" > "$root/recordings/macos-recorder.log" 2>&1 &
+"$root/recordings/record-window" "$root/recordings/macos.mp4" "$root/recordings/macos-recorder.stop" "$root/recordings/macos-recorder.ready" > "$root/recordings/macos-recorder.log" 2>&1 &
 recorder=$!
-stop_mac(){ kill -INT "$recorder" 2>/dev/null || true; wait "$recorder" || true; }
+stop_mac(){ touch "$root/recordings/macos-recorder.stop"; wait "$recorder"; }
 trap stop_mac EXIT
 xcodebuild test-without-building -parallel-testing-enabled NO -project TEKtalkMac.xcodeproj -scheme TEKtalkMacMVP -destination 'platform=macOS' -derivedDataPath build-mvp CODE_SIGNING_ALLOWED=NO > "$root/recordings/macos-test.log" 2>&1
 grep -Eq "testRegisterLogoutLoginAndChat.*passed" "$root/recordings/macos-test.log"
-kill -0 "$recorder"
 stop_mac
 trap - EXIT
 cd "$root"
 python3 scripts/visual/scenario.py verify-existing --fixture clients/macos/TEKtalkMacFlowTests/fixture.json
-ffmpeg -y -i recordings/macos.mov -c:v libx264 -pix_fmt yuv420p -movflags +faststart recordings/macos.mp4
 python3 -c 'import json,pathlib;pathlib.Path("recordings/macos-flow.json").write_text(json.dumps(dict(platform="macos",registration=True,logout=True,login=True,verification=True,sent_and_received_in_ui=True)))'
 fi

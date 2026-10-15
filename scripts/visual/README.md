@@ -21,3 +21,8 @@ The current developer MVP opens a conversation with conversation/recipient
 IDs. The video enters those fields through the UI; it does not inject tokens,
 messages or hidden localStorage state into the app. Search/contact discovery
 is outside this recording flow. No OTP is used for registration or login.
+
+macOS uses ScreenCaptureKit to record the application window continuously,
+with a recorder-ready handshake before any UI actions. It stops before the
+test runner closes the app. This avoids capturing the system test overlay and
+idle desktop while preserving every real interaction.
