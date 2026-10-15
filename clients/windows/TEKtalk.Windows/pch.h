@@ -16,6 +16,7 @@
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Microsoft.UI.Xaml.Navigation.h>
 #include <winrt/Microsoft.UI.Windowing.h>
+#include <winrt/Microsoft.Windows.ApplicationModel.Resources.h>
 #include <string>
 #include <vector>
 #include <optional>
