@@ -13,6 +13,7 @@
       <a class="brand" href="#messages" aria-label="TEKtalk home"><span class="brand-mark">T</span><span>TEK<span>@</span>talk</span></a>
       <div class="top-actions">
         <span id="connection" class="connection"><i></i><span data-i18n="connecting">Đang kết nối</span></span>
+        <button id="signOutButton" class="text-button" type="button" data-i18n="signOut" hidden>Sign out</button>
         <button id="languageButton" class="icon-button text-button" type="button" aria-label="Change language">VI</button>
         <button id="themeButton" class="icon-button" type="button" aria-label="Đổi giao diện">◐</button>
       </div>
@@ -41,6 +42,7 @@
 
         <article class="chat-panel">
           <header class="chat-header"><span class="avatar gradient">AI</span><div><strong>TEK Assistant</strong><span data-i18n="online">Đang hoạt động</span></div><button class="icon-button" type="button" aria-label="Audio call">⌕</button><button class="icon-button" type="button" aria-label="Video call">▻</button></header>
+          <div id="chatControls" hidden><button id="configureChat" type="button" data-i18n="configureChat">Open conversation</button><button id="syncHistory" type="button" data-i18n="syncHistory">Sync messages</button></div>
           <div id="messageList" class="message-list" aria-live="polite">
             <div class="day-chip" data-i18n="today">Hôm nay</div>
             <div class="message incoming"><p data-i18n="welcome">Xin chào! Đây là TEKtalk Web — cùng một hợp đồng API và mô hình dữ liệu với các ứng dụng native.</p><time>09:41</time></div>
@@ -81,6 +83,12 @@
       <button id="demoButton" class="secondary" type="button" data-i18n="demoMode">Trải nghiệm chế độ demo</button>
     </form>
   </dialog>
+  <dialog id="chatDialog"><form id="chatForm" class="auth-card">
+    <h2 data-i18n="configureChat">Open conversation</h2>
+    <label><span data-i18n="conversationId">Conversation ID</span><input id="conversationId" required></label>
+    <label><span data-i18n="recipientId">Recipient ID</span><input id="recipientId" required></label>
+    <button id="openConversation" class="primary" data-i18n="continue">Continue</button>
+  </form></dialog>
   <div id="toast" class="toast" role="status"></div>
   <script src="./encrypted-storage.js"></script>
   <script type="module" src="./app.js"></script>

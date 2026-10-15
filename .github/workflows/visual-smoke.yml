@@ -1,189 +1,172 @@
 name: Visual smoke
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 on:
   workflow_dispatch:
   pull_request:
   push:
     branches: [main]
-    paths:
-      - "clients/**"
-      - "core/**"
-      - "scripts/visual/**"
-      - ".github/workflows/visual-smoke.yml"
-
-permissions:
-  contents: read
-
+    paths: ['clients/**', 'core/**', 'scripts/visual/**', '.github/workflows/visual-smoke.yml']
+permissions: {contents: read}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   web:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
+    env: {DATABASE_URL: 'postgres://chat@127.0.0.1:5432/chat'}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: {node-version: "22"}
-      - name: Start real backend stack
-        run: |
-          cp .env.example .env
-          sed -i "s/replace-with-at-least-32-random-bytes/$(openssl rand -hex 32)/" .env
-          sed -i "s/replace-with-an-independent-random-secret/$(openssl rand -hex 32)/" .env
-          docker compose up --build -d --wait --wait-timeout 600
+        with: {node-version: '22'}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: {cache-on-failure: true}
+      - uses: ankane/setup-postgres@v1
+        with: {user: chat, database: chat}
+      - run: cargo build --release -p chat-server
+      - run: python3 scripts/visual/scenario.py backend
+      - run: python3 scripts/visual/scenario.py prepare --platform web --fixture build/visual-fixtures/web.json
       - run: npm install --no-save playwright@1.55.1 && npx playwright install --with-deps chromium
-      - run: python3 -m http.server 5173 --directory clients/web >/tmp/tektalk-web.log 2>&1 &
-      - name: Capture register, login, verification and chat MVP
-        run: mkdir -p screenshots && node scripts/visual/capture_web_mvp.mjs
+      - name: Record registration, logout, login, verification, send, receive and reload
+        run: node scripts/visual/record_web_mvp.mjs
       - uses: actions/upload-artifact@v4
-        with: {name: visual-web, path: screenshots/*.png, if-no-files-found: error}
-      - name: Show backend logs on failure
-        if: failure()
-        run: docker compose logs --no-color --tail=200
-      - name: Stop backend stack
         if: always()
-        run: docker compose down --volumes --remove-orphans
-
+        with:
+          name: recording-web
+          path: |
+            recordings/web.webm
+            recordings/*-backend.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: {name: recording-web-diagnostics, path: 'recordings/*.log'}
   android:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 55
+    env: {DATABASE_URL: 'postgres://chat@127.0.0.1:5432/chat'}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: "17"}
+        with: {distribution: temurin, java-version: '17'}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.10.2'}
       - uses: dtolnay/rust-toolchain@stable
         with: {targets: x86_64-linux-android}
-      - uses: gradle/actions/setup-gradle@v4
-        with: {gradle-version: "8.10.2"}
+      - uses: Swatinem/rust-cache@v2
+        with: {cache-on-failure: true}
+      - uses: ankane/setup-postgres@v1
+        with: {user: chat, database: chat}
+      - run: cargo build --release -p chat-server
+      - run: python3 scripts/visual/scenario.py backend
+      - run: python3 scripts/visual/scenario.py prepare --platform android --fixture build/visual-fixtures/android.json
       - run: cargo install cargo-ndk --locked
       - run: cargo ndk -t x86_64 -o clients/android/app/src/main/jniLibs build --release -p tektalk-client-core
-      - name: Enable emulator acceleration
-        run: |
-          sudo chmod 666 /dev/kvm
-      - name: Build Android client before starting the emulator
-        run: gradle -p clients/android :app:assembleDebug
-      - name: Build, boot and capture Android client
-        uses: reactivecircus/android-emulator-runner@v2
+      - run: gradle -p clients/android :app:assembleDebug
+      - run: sudo chmod 666 /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
           arch: x86_64
           profile: pixel_2
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          script: bash scripts/visual/capture_android.sh
-      - name: Upload Android diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with: {name: android-visual-diagnostics, path: screenshots/android-*.txt}
+          script: bash scripts/visual/record_android_mvp.sh
       - uses: actions/upload-artifact@v4
-        with: {name: visual-android, path: screenshots/*.png, if-no-files-found: error}
-
+        if: always()
+        with:
+          name: recording-android
+          path: |
+            recordings/android.mp4
+            recordings/android-*.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: {name: recording-android-diagnostics, path: 'recordings/*.log'}
   apple:
+    strategy:
+      fail-fast: false
+      matrix: {platform: [ios, macos]}
     runs-on: macos-15
-    timeout-minutes: 40
+    timeout-minutes: 65
+    env: {DATABASE_URL: 'postgres://chat@127.0.0.1:5432/chat'}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: brew install xcodegen
-      - name: Build macOS shared Rust core
-        run: bash scripts/build-core-macos.sh
-      - name: Build and capture iOS client
-        run: |
-          set -euo pipefail
-          mkdir -p screenshots
-          cd clients/ios
-          xcodegen generate
-          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for xs in d.values() for x in xs if x["name"].startswith("iPhone") and x["isAvailable"]))')
-          xcrun simctl boot "$UDID" || true
-          open -a Simulator
-          xcrun simctl bootstatus "$UDID" -b
-          xcodebuild -project TEKtalk.xcodeproj -scheme TEKtalk -configuration Debug -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath build build CODE_SIGNING_ALLOWED=NO
-          APP=$(find build/Build/Products -path '*iphonesimulator/TEKtalk.app' -print -quit)
-          xcrun simctl install "$UDID" "$APP"
-          xcrun simctl launch "$UDID" vn.tektalk.ios
-          sleep 5
-          xcrun simctl io "$UDID" screenshot ../../screenshots/ios.png
-      - name: Build and capture macOS client
-        run: |
-          set -euo pipefail
-          cd clients/macos
-          xcodegen generate
-          xcodebuild -project TEKtalkMac.xcodeproj -scheme TEKtalkMac -configuration Debug -derivedDataPath build build CODE_SIGNING_ALLOWED=NO
-          APP=$(find build/Build/Products -path '*/TEKtalkMac.app' -print -quit)
-          open "$APP"
-          sleep 5
-          screencapture -x ../../screenshots/macos.png
+      - uses: Swatinem/rust-cache@v2
+        with: {cache-on-failure: true}
+      - uses: ankane/setup-postgres@v1
+        with: {user: chat, database: chat}
+      - run: cargo build --release -p chat-server -p tektalk-client-core
+      - run: bash scripts/build-core-macos.sh
+      - run: python3 scripts/visual/scenario.py backend
+      - name: Record complete ${{ matrix.platform }} UI flow
+        run: bash scripts/visual/record_apple_mvp.sh ${{ matrix.platform }}
       - uses: actions/upload-artifact@v4
-        with: {name: visual-apple, path: screenshots/*.png, if-no-files-found: error}
-
+        if: always()
+        with:
+          name: recording-${{ matrix.platform }}
+          path: |
+            recordings/ios.mp4
+            recordings/macos.mp4
+            recordings/ios-*.json
+            recordings/macos-*.json
+            recordings/ios-test.log
+            recordings/macos-test.log
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: {name: "recording-${{ matrix.platform }}-diagnostics", path: 'recordings/*.log'}
   windows:
     runs-on: windows-2022
-    timeout-minutes: 30
+    timeout-minutes: 65
+    env: {DATABASE_URL: 'postgres://chat@127.0.0.1:5432/chat'}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build --release -p tektalk-client-core
-      - name: Prepare Rust core
-        shell: pwsh
-        run: Copy-Item target/release/tektalk_client_core.dll clients/windows/TEKtalk.Windows/tektalk_client_core.dll
+      - uses: Swatinem/rust-cache@v2
+        with: {cache-on-failure: true}
+      - uses: ankane/setup-postgres@v1
+        with: {user: chat, database: chat}
+      - run: cargo build --release -p chat-server -p tektalk-client-core
+      - run: python scripts/visual/scenario.py backend
+      - run: python scripts/visual/scenario.py prepare --platform windows --fixture build/visual-fixtures/windows.json
       - uses: microsoft/setup-msbuild@v2
-      - name: Build Windows client
-        shell: pwsh
-        run: msbuild clients/windows/TEKtalk.Windows/TEKtalk.Windows.vcxproj /restore /m /p:Configuration=Release /p:Platform=x64
-      - name: Launch and capture Windows client
-        shell: pwsh
-        run: |
-          $exe = Get-ChildItem clients/windows -Recurse -Filter TEKtalk.exe | Where-Object FullName -Match 'Release' | Select-Object -First 1
-          if (-not $exe) { throw 'TEKtalk.exe was not produced' }
-          $process = Start-Process $exe.FullName -PassThru
-          for ($attempt = 0; $attempt -lt 30; $attempt++) {
-            Start-Sleep -Milliseconds 500
-            $process.Refresh()
-            if ($process.HasExited) { throw "TEKtalk.exe exited with code $($process.ExitCode)" }
-            if ($process.MainWindowHandle -ne 0) { break }
-          }
-          if ($process.MainWindowHandle -eq 0) { throw 'TEKtalk window was not created' }
-          New-Item -ItemType Directory -Force screenshots | Out-Null
-          Add-Type -AssemblyName System.Windows.Forms
-          Add-Type -AssemblyName System.Drawing
-          Add-Type @'
-          using System;
-          using System.Runtime.InteropServices;
-          public static class NativeWindow {
-            [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
-            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
-            [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int command);
-            [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
-          }
-          '@
-          [NativeWindow]::ShowWindow($process.MainWindowHandle, 9) | Out-Null
-          [NativeWindow]::SetForegroundWindow($process.MainWindowHandle) | Out-Null
-          Start-Sleep -Seconds 2
-          $rect = New-Object NativeWindow+RECT
-          if (-not [NativeWindow]::GetWindowRect($process.MainWindowHandle, [ref]$rect)) { throw 'Could not read TEKtalk window bounds' }
-          $width = $rect.Right - $rect.Left
-          $height = $rect.Bottom - $rect.Top
-          if ($width -lt 320 -or $height -lt 240) { throw "Invalid TEKtalk window size: ${width}x${height}" }
-          $image = New-Object System.Drawing.Bitmap $width, $height
-          $graphics = [System.Drawing.Graphics]::FromImage($image)
-          $graphics.CopyFromScreen((New-Object System.Drawing.Point $rect.Left, $rect.Top), [System.Drawing.Point]::Empty, (New-Object System.Drawing.Size $width, $height))
-          $image.Save((Join-Path $PWD 'screenshots/windows.png'), [System.Drawing.Imaging.ImageFormat]::Png)
-          $graphics.Dispose(); $image.Dispose()
+      - run: Copy-Item target/release/tektalk_client_core.dll clients/windows/TEKtalk.Windows/tektalk_client_core.dll
+      - run: msbuild clients/windows/TEKtalk.Windows/TEKtalk.Windows.vcxproj /restore /m /p:Configuration=Release /p:Platform=x64
+      - run: choco install ffmpeg -y --no-progress
+      - run: python -m pip install pywinauto==0.6.9
+      - name: Record Windows registration, logout, login and bidirectional chat
+        run: python scripts/visual/record_windows_mvp.py
       - uses: actions/upload-artifact@v4
-        with: {name: visual-windows, path: screenshots/*.png, if-no-files-found: error}
-
-  gif:
+        if: always()
+        with:
+          name: recording-windows
+          path: |
+            recordings/windows.mp4
+            recordings/windows-*.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: recording-windows-diagnostics
+          path: |
+            recordings/*.log
+            recordings/windows-ui.txt
+  videos:
     needs: [web, android, apple, windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with: {pattern: visual-*, path: screenshots, merge-multiple: true}
-      - run: python3 -m pip install --disable-pip-version-check Pillow==11.3.0
-      - run: python3 scripts/visual/make_platform_gif.py screenshots tektalk-platform-demo.gif
+        with: {pattern: 'recording-*', path: recordings, merge-multiple: true}
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - run: python3 scripts/visual/package_recordings.py recordings
       - uses: actions/upload-artifact@v4
         with:
-          name: tektalk-platform-demo
+          name: tektalk-mvp-screen-recordings
           path: |
-            tektalk-platform-demo.gif
-            screenshots/*.png
+            recordings/published/*.mp4
+            recordings/published/recording-manifest.json
+            recordings/*-flow.json
+            recordings/*-backend.json
+          if-no-files-found: error
