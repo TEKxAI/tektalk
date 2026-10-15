@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import ScreenCaptureKit
 import AVFoundation
 
@@ -25,7 +26,11 @@ final class RecordingEvents: NSObject, SCRecordingOutputDelegate {
 
 @main @available(macOS 15.0, *)
 struct RecordWindow {
-    static func main() async throws {
+    @MainActor static func main() async throws {
+        // Connect this command-line recorder to WindowServer before ScreenCaptureKit.
+        let application=NSApplication.shared
+        application.setActivationPolicy(.accessory)
+        _ = CGMainDisplayID()
         guard CommandLine.arguments.count == 4 else { fatalError("Usage: record-window OUTPUT STOP READY") }
         let output=URL(fileURLWithPath:CommandLine.arguments[1])
         let stop=CommandLine.arguments[2]
@@ -67,7 +72,7 @@ struct RecordWindow {
             try await Task.sleep(nanoseconds:100_000_000)
         }
         if FileManager.default.fileExists(atPath:failed.path) {
-            throw NSError(domain:"MVPRecorder",code:2,userInfo:[NSLocalizedDescriptionKey:try String(contentsOf:failed)])
+            throw NSError(domain:"MVPRecorder",code:2,userInfo:[NSLocalizedDescriptionKey:try String(contentsOf:failed,encoding:.utf8)])
         }
         guard FileManager.default.fileExists(atPath:finished.path), FileManager.default.fileExists(atPath:stop) else {
             throw NSError(domain:"MVPRecorder",code:3,userInfo:[NSLocalizedDescriptionKey:"Recording did not finish with the completed UI flow"])
