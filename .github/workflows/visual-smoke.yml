@@ -113,7 +113,7 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: failure()
-        with: {name: recording-${{ matrix.platform }}-diagnostics, path: 'recordings/*.log'}
+        with: {name: "recording-${{ matrix.platform }}-diagnostics", path: 'recordings/*.log'}
   windows:
     runs-on: windows-2022
     timeout-minutes: 65
