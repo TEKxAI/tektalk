@@ -35,6 +35,8 @@ final class MVPFlowTests: XCTestCase {
         #if os(macOS)
         e.typeKey("a", modifierFlags:.command)
         #else
+        // Tap the trailing edge so deletion starts after the whole existing value.
+        e.coordinate(withNormalizedOffset:CGVector(dx:0.98,dy:0.5)).tap()
         let count=(e.value as? String)?.count ?? 0
         e.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:count))
         #endif
@@ -80,14 +82,21 @@ final class MVPFlowTests: XCTestCase {
         fill("chat.conversation",f["conversation"]!);fill("chat.recipient",f["peer_id"]!);fill("chat.draft",f["outgoing"]!)
         XCTAssertTrue(element("chat.send").isEnabled, "Send disabled: \(app.debugDescription)")
         tap("chat.send")
-        XCTAssertTrue(app.staticTexts[f["outgoing"]!].firstMatch.waitForExistence(timeout:30))
+        let sent=app.staticTexts[f["outgoing"]!].firstMatch
+        XCTAssertTrue(sent.waitForExistence(timeout:30))
+        XCTAssertTrue(sent.isHittable, "Outgoing message is outside the visible chat")
         Thread.sleep(forTimeInterval:2)
         let rows=try XCTUnwrap(post("/v1/chat/messages/history",["conversation_id":f["conversation"]!,"limit":50]) as? [[String:Any]])
         let outgoing=try XCTUnwrap(rows.first {($0["body"] as? String)==f["outgoing"]})
         _=try post("/v1/chat/messages/send",["conversation_id":f["conversation"]!,"recipient_id":try XCTUnwrap(outgoing["sender_id"]),"client_message_id":UUID().uuidString,"text":f["incoming"]!])
         tap("chat.sync")
-        XCTAssertTrue(app.staticTexts[f["incoming"]!].firstMatch.waitForExistence(timeout:30))
-        Thread.sleep(forTimeInterval:3)
+        let received=app.staticTexts[f["incoming"]!].firstMatch
+        XCTAssertTrue(received.waitForExistence(timeout:30))
+        XCTAssertTrue(received.isHittable, "Reply is outside the visible chat")
+        received.tap()
+        let proof=XCTAttachment(screenshot:app.screenshot())
+        proof.name="visible-bidirectional-chat";proof.lifetime = .keepAlways;add(proof)
+        Thread.sleep(forTimeInterval:8)
         #if os(macOS)
         if let stop=fixture["recording_stop"] {
             try Data().write(to:URL(fileURLWithPath:stop))

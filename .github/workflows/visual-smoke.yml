@@ -110,6 +110,8 @@ jobs:
             recordings/macos.mp4
             recordings/ios-*.json
             recordings/macos-*.json
+            recordings/ios-test.log
+            recordings/macos-test.log
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: failure()

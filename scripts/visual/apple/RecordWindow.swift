@@ -48,6 +48,7 @@ struct RecordWindow {
         }
         guard let window else { throw NSError(domain:"MVPRecorder",code:1,userInfo:[NSLocalizedDescriptionKey:"TEKtalk window did not appear"]) }
         let config=SCStreamConfiguration()
+        config.scalesToFit=true
         config.width=1440
         config.height=(Int(1440 * window.frame.height / window.frame.width) / 2) * 2
         config.minimumFrameInterval=CMTime(value:1,timescale:24)
