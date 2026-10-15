@@ -47,6 +47,14 @@ message source of truth, and projection outboxes make cross-DB updates retryable
 
 ## Migrations
 
-Physical versions remain explicit. Conversation DBs migrate lazily when opened,
-avoiding an all-database startup scan. Payload versions evolve separately and
-are upgraded in memory by the Rust codec layer.
+Versioned SQL lives under `core/migrations/{catalog,conversation,search,jobs}`.
+The Rust core embeds these `.sql` files into the native library, so every
+platform executes the same reviewed schema without loading mutable SQL from the
+device filesystem. Each migration runs once in a transaction and is recorded
+in `schema_migrations` with its SHA-256 checksum. Released migration files are
+immutable; schema changes always add a new versioned file.
+
+Catalog, search and jobs migrations run when an account opens. Conversation DBs
+migrate lazily when opened, avoiding an all-database startup scan. A checksum
+mismatch or a database newer than the core fails closed. Payload versions evolve
+separately and are upgraded in memory by the Rust codec layer.

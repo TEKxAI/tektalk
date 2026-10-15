@@ -15,6 +15,11 @@ grep -q 'extern "C" fn tektalk_session_create' "$root/core/src/lib.rs"
 grep -q 'bundled-sqlcipher-vendored-openssl' "$root/core/Cargo.toml"
 grep -q 'PRAGMA cipher_version' "$root/core/src/storage.rs"
 grep -q 'CipherUnavailable' "$root/core/src/storage.rs"
+for migration in catalog conversation search jobs; do
+  test -s "$root/core/migrations/$migration/V001__initial.sql"
+done
+grep -q 'schema_migrations' "$root/core/src/storage.rs"
+grep -q 'MigrationChecksumMismatch' "$root/core/src/storage.rs"
 test -s "$root/docs/client-encrypted-storage.md"
 test -s "$root/clients/android/app/src/main/java/vn/tektalk/data/EncryptedDatabase.kt"
 test -s "$root/clients/ios/TEKtalk/Data/EncryptedDatabase.swift"
