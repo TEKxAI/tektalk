@@ -3,9 +3,12 @@
 //! Swift and Kotlin/JNI consume the stable C ABI declared in
 //! `include/tektalk/ffi.h`; Rust types and ownership stay inside this crate.
 
+use std::ffi::CStr;
+
 pub mod id;
 pub mod mtproto;
 pub mod plugin;
+pub mod storage;
 pub mod transport;
 
 #[cfg(target_os = "android")]
@@ -86,6 +89,81 @@ pub struct TektalkSession {
 #[repr(C)]
 pub struct TektalkSnowflake {
     generator: id::SnowflakeGenerator,
+}
+
+/// Opaque encrypted account database crossing native ABIs.
+#[repr(C)]
+pub struct TektalkAccountStore {
+    store: storage::AccountStore,
+}
+
+/// Opens an account-scoped SQLCipher store. Failure is closed: a null handle
+/// is returned if SQLCipher is unavailable or the file cannot be decrypted.
+///
+/// # Safety
+/// `root_utf8` must be a null-terminated UTF-8 string and `key` must point to
+/// exactly 32 readable bytes.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_database_open(
+    root_utf8: *const std::ffi::c_char,
+    key: *const u8,
+    key_length: usize,
+    max_open_conversations: u32,
+) -> *mut TektalkAccountStore {
+    if root_utf8.is_null() || key.is_null() || key_length != 32 {
+        return std::ptr::null_mut();
+    }
+    // SAFETY: Required by the public function contract.
+    let Ok(root) = unsafe { CStr::from_ptr(root_utf8) }.to_str() else {
+        return std::ptr::null_mut();
+    };
+    // SAFETY: Length and readability are required by the public contract.
+    let key = unsafe { std::slice::from_raw_parts(key, key_length) };
+    storage::AccountStore::open(root, key, max_open_conversations as usize)
+        .map(|store| Box::into_raw(Box::new(TektalkAccountStore { store })))
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// # Safety
+/// A non-null pointer must be a uniquely owned handle returned by
+/// [`tektalk_database_open`].
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_database_close(database: *mut TektalkAccountStore) {
+    if !database.is_null() {
+        // SAFETY: Required by the public function contract.
+        drop(unsafe { Box::from_raw(database) });
+    }
+}
+
+/// Lazily creates/opens one encrypted conversation database.
+///
+/// # Safety
+/// `database` must be a live handle returned by [`tektalk_database_open`].
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_database_open_conversation(
+    database: *mut TektalkAccountStore,
+    conversation_id: i64,
+) -> i32 {
+    // SAFETY: Required by the public function contract. Null is handled.
+    unsafe { database.as_ref() }
+        .and_then(|database| database.store.conversation(conversation_id).ok())
+        .map(|_| 1)
+        .unwrap_or(0)
+}
+
+/// Returns the number of cached conversation handles, or -1 on error.
+///
+/// # Safety
+/// `database` must be a live handle returned by [`tektalk_database_open`].
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_database_open_handle_count(
+    database: *const TektalkAccountStore,
+) -> i32 {
+    // SAFETY: Required by the public function contract. Null is handled.
+    unsafe { database.as_ref() }
+        .and_then(|database| database.store.open_handle_count().ok())
+        .and_then(|count| i32::try_from(count).ok())
+        .unwrap_or(-1)
 }
 
 #[no_mangle]

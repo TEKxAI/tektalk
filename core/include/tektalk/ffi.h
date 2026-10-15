@@ -8,6 +8,7 @@ extern "C" {
 
 typedef struct tektalk_session tektalk_session;
 typedef struct tektalk_snowflake tektalk_snowflake;
+typedef struct tektalk_account_store tektalk_account_store;
 
 enum tektalk_accept_result {
   TEKTALK_ACCEPTED = 0,
@@ -28,6 +29,20 @@ enum tektalk_accept_result tektalk_session_accept_message_id(
 tektalk_snowflake* tektalk_snowflake_create(uint16_t node_id);
 void tektalk_snowflake_destroy(tektalk_snowflake* generator);
 int64_t tektalk_snowflake_next(tektalk_snowflake* generator);
+
+/* Opens an account-scoped SQLCipher store. The key must contain exactly 32
+ * bytes. NULL means SQLCipher is unavailable or the database cannot decrypt. */
+tektalk_account_store* tektalk_database_open(
+    const char* root_utf8,
+    const uint8_t* key,
+    uintptr_t key_length,
+    uint32_t max_open_conversations);
+void tektalk_database_close(tektalk_account_store* database);
+int32_t tektalk_database_open_conversation(
+    tektalk_account_store* database,
+    int64_t conversation_id);
+int32_t tektalk_database_open_handle_count(
+    const tektalk_account_store* database);
 
 /* Generates a monotonically increasing MTProto 2.0 wire message ID. This is
  * intentionally distinct from a persisted Snowflake message ID. */

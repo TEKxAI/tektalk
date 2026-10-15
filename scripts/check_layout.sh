@@ -12,6 +12,19 @@ grep -q 'SnowflakeGenerator' "$root/server/src/state.rs"
 test ! -e "$root/server/src/mtproto.rs" || { echo 'duplicate server MTProto codec found' >&2; exit 1; }
 grep -q 'crate-type = \["staticlib", "cdylib", "rlib"\]' "$root/core/Cargo.toml"
 grep -q 'extern "C" fn tektalk_session_create' "$root/core/src/lib.rs"
+grep -q 'bundled-sqlcipher-vendored-openssl' "$root/core/Cargo.toml"
+grep -q 'PRAGMA cipher_version' "$root/core/src/storage.rs"
+grep -q 'CipherUnavailable' "$root/core/src/storage.rs"
+for migration in catalog conversation search jobs; do
+  test -s "$root/core/migrations/$migration/V001__initial.sql"
+done
+grep -q 'schema_migrations' "$root/core/src/storage.rs"
+grep -q 'MigrationChecksumMismatch' "$root/core/src/storage.rs"
+test -s "$root/docs/client-encrypted-storage.md"
+test -s "$root/clients/android/app/src/main/java/vn/tektalk/data/EncryptedDatabase.kt"
+test -s "$root/clients/ios/TEKtalk/Data/EncryptedDatabase.swift"
+test -s "$root/clients/macos/TEKtalkMac/Data/EncryptedDatabase.swift"
+test -s "$root/clients/windows/TEKtalk.Windows/Data/EncryptedDatabase.cpp"
 "$root/scripts/validate-plugins.sh"
 if grep -Rqi 'chacha20' "$root/server" "$root/clients"; then echo 'ChaCha20 reference found' >&2; exit 1; fi
 if grep -RqiE 'TEKtalk Realtime Protocol v1|MTProto-inspired|tektalk-v1|realtime-session' "$root/README.md" "$root/docs" "$root/protocol" "$root/server" "$root/clients"; then
