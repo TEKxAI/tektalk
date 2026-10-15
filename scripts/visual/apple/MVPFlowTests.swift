@@ -32,6 +32,7 @@ final class MVPFlowTests: XCTestCase {
         e.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:count))
         #endif
         e.typeText(value);Thread.sleep(forTimeInterval:0.5)
+        if id.hasPrefix("chat.") { XCTAssertEqual(e.value as? String, value, "Input did not reach \(id)") }
     }
     private func post(_ path: String, _ body: [String:Any]) throws -> Any {
         var request=URLRequest(url:URL(string:"http://127.0.0.1:8080"+path)!)
@@ -64,7 +65,12 @@ final class MVPFlowTests: XCTestCase {
         #if os(iOS)
         tap("chat.open")
         #endif
-        fill("chat.conversation",f["conversation"]!);fill("chat.recipient",f["peer_id"]!);fill("chat.draft",f["outgoing"]!);tap("chat.send")
+        fill("chat.conversation",f["conversation"]!);fill("chat.recipient",f["peer_id"]!);fill("chat.draft",f["outgoing"]!)
+        #if os(iOS)
+        tap("chat.keyboard.done")
+        #endif
+        XCTAssertTrue(element("chat.send").isEnabled, "Send disabled: \(app.debugDescription)")
+        tap("chat.send")
         XCTAssertTrue(app.staticTexts[f["outgoing"]!].firstMatch.waitForExistence(timeout:30))
         Thread.sleep(forTimeInterval:2)
         let rows=try XCTUnwrap(post("/v1/chat/messages/history",["conversation_id":f["conversation"]!,"limit":50]) as? [[String:Any]])

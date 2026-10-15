@@ -83,6 +83,9 @@ jobs:
         if: failure()
         with: {name: recording-android-diagnostics, path: 'recordings/*.log'}
   apple:
+    strategy:
+      fail-fast: false
+      matrix: {platform: [ios, macos]}
     runs-on: macos-15
     timeout-minutes: 65
     env: {DATABASE_URL: 'postgres://chat@127.0.0.1:5432/chat'}
@@ -96,12 +99,12 @@ jobs:
       - run: cargo build --release -p chat-server -p tektalk-client-core
       - run: bash scripts/build-core-macos.sh
       - run: python3 scripts/visual/scenario.py backend
-      - name: Record complete iOS and macOS UI flows
-        run: bash scripts/visual/record_apple_mvp.sh
+      - name: Record complete ${{ matrix.platform }} UI flow
+        run: bash scripts/visual/record_apple_mvp.sh ${{ matrix.platform }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: recording-apple
+          name: recording-${{ matrix.platform }}
           path: |
             recordings/ios.mp4
             recordings/macos.mp4
@@ -110,7 +113,7 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: failure()
-        with: {name: recording-apple-diagnostics, path: 'recordings/*.log'}
+        with: {name: recording-${{ matrix.platform }}-diagnostics, path: 'recordings/*.log'}
   windows:
     runs-on: windows-2022
     timeout-minutes: 65
