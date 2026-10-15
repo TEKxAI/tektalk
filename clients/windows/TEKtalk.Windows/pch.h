@@ -21,3 +21,5 @@
 #include <vector>
 #include <optional>
 #include <utility>
+
+#include <winrt/Microsoft.UI.Xaml.Automation.h>

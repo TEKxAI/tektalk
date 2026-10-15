@@ -1,4 +1,4 @@
-const translations={vi:{connecting:'Đang kết nối',backendReady:'Backend sẵn sàng',connectedBackend:'Đã kết nối backend',signedIn:'Đăng nhập thành công',verifyDevice:'Xác minh thiết bị',demoEnabled:'Đã bật chế độ demo',demoWorkspace:'Không gian demo',demoReply:'Đã nhận tin nhắn trong chế độ demo. Kết nối backend để đồng bộ đa thiết bị.',recipientRequired:'Cần cấu hình người nhận để gửi qua backend',aiSimulated:'Tính năng AI đã được mô phỏng trong bản demo Web.',messages:'Tin nhắn',me:'Cá nhân',inbox:'HỘP THƯ',search:'Tìm kiếm',welcomeShort:'Chào mừng bạn đến TEKtalk',teamMessage:'Bản demo Web đã sẵn sàng ✨',designMessage:'Đã gửi một ảnh',yesterday:'Hôm qua',online:'Đang hoạt động',today:'Hôm nay',welcome:'Xin chào! Đây là TEKtalk Web — cùng một hợp đồng API và mô hình dữ liệu với các ứng dụng native.',tryMessage:'Bạn có thể đăng nhập backend local hoặc bật chế độ demo để trải nghiệm ngay.',typeMessage:'Nhập tin nhắn',aiTitle:'Trợ lý cho mọi cuộc trò chuyện',aiBody:'Tóm tắt hội thoại, soạn câu trả lời và tìm thông tin trong một không gian riêng tư.',summarize:'Tóm tắt cuộc trò chuyện',draft:'Soạn câu trả lời thân thiện',tasks:'Tìm các việc cần làm',account:'Tài khoản',signInHint:'Đăng nhập để đồng bộ tin nhắn',appearance:'Giao diện',systemTheme:'Sáng, tối và theo hệ thống',privacy:'Quyền riêng tư',privacyHint:'Session và thiết bị',welcomeBack:'Chào mừng đến TEKtalk',authIntro:'Kết nối với backend local hoặc dùng dữ liệu demo.',login:'Đăng nhập',register:'Đăng ký',phone:'Số điện thoại',displayName:'Tên hiển thị',password:'Mật khẩu',securityQuestion:'Câu hỏi bảo mật',securityAnswer:'Câu trả lời',continue:'Tiếp tục',demoMode:'Trải nghiệm chế độ demo'},en:{connecting:'Connecting',backendReady:'Backend ready',connectedBackend:'Connected to backend',signedIn:'Signed in',verifyDevice:'Verify device',demoEnabled:'Demo mode enabled',demoWorkspace:'Demo workspace',demoReply:'Message received in demo mode. Connect the backend for multi-device sync.',recipientRequired:'Configure a recipient to send through the backend',aiSimulated:'The AI feature is simulated in the Web demo.',messages:'Messages',me:'Me',inbox:'INBOX',search:'Search',welcomeShort:'Welcome to TEKtalk',teamMessage:'The Web demo is ready ✨',designMessage:'Sent a photo',yesterday:'Yesterday',online:'Online',today:'Today',welcome:'Hello! This is TEKtalk Web — using the same API contract and data model as the native applications.',tryMessage:'Sign in to your local backend or enable demo mode to explore instantly.',typeMessage:'Type a message',aiTitle:'An assistant for every conversation',aiBody:'Summarize conversations, draft replies, and find information in a private workspace.',summarize:'Summarize conversation',draft:'Draft a friendly reply',tasks:'Find action items',account:'Account',signInHint:'Sign in to sync messages',appearance:'Appearance',systemTheme:'Light, dark, and system',privacy:'Privacy',privacyHint:'Sessions and devices',welcomeBack:'Welcome to TEKtalk',authIntro:'Connect to the local backend or use demo data.',login:'Sign in',register:'Create account',phone:'Phone number',displayName:'Display name',password:'Password',securityQuestion:'Security question',securityAnswer:'Security answer',continue:'Continue',demoMode:'Explore demo mode'}};
+import { translations } from './locales.js';
 const state={locale:localStorage.getItem('tektalk.locale')||'vi',theme:localStorage.getItem('tektalk.theme')||'light',mode:'login',challengeId:null,tokens:JSON.parse(sessionStorage.getItem('tektalk.tokens')||'null'),demo:sessionStorage.getItem('tektalk.demo')==='1'};
 const queryApi=new URLSearchParams(location.search).get('api');
 const apiBase=(queryApi||localStorage.getItem('tektalk.api')||(location.port==='5173'?'http://localhost:8080':location.origin)).replace(/\/$/,'');
@@ -11,10 +11,56 @@ async function request(path,options={}){const headers={'content-type':'applicati
 async function health(){try{const response=await fetch(`${apiBase}/healthz`);setConnection(response.ok)}catch{setConnection(false)}}
 function activateTab(name){$$('.nav-item').forEach(e=>e.classList.toggle('active',e.dataset.tab===name));$$('.tab-panel').forEach(e=>e.classList.toggle('active',e.id===name));history.replaceState(null,'',`#${name}`)}
 function setAuthMode(mode){state.mode=mode;state.challengeId=null;$$('[data-auth-mode]').forEach(e=>e.classList.toggle('active',e.dataset.authMode===mode));const register=mode==='register';$('#displayNameField').hidden=!register;$('#questionField').hidden=!register;$('#answerField').hidden=!register;$('#challengeField').hidden=true;$('#authError').textContent=''}
-function storeTokens(tokens){state.tokens=tokens;state.demo=false;sessionStorage.setItem('tektalk.tokens',JSON.stringify(tokens));sessionStorage.removeItem('tektalk.demo');$('#profileId').textContent=tokens.user_id;$('#authHint').textContent=translations[state.locale].connectedBackend;$('#authDialog').close();toast(translations[state.locale].signedIn)}
+function storeTokens(tokens){state.tokens=tokens;state.demo=false;sessionStorage.setItem('tektalk.tokens',JSON.stringify(tokens));sessionStorage.removeItem('tektalk.demo');$('#profileId').textContent=tokens.user_id;$('#authHint').textContent=translations[state.locale].connectedBackend;$('#authDialog').close();renderSession();toast(translations[state.locale].signedIn)}
 async function authenticate(event){event.preventDefault();const form=new FormData(event.currentTarget);const error=$('#authError');error.textContent='';try{if(state.challengeId){const tokens=await request('/v1/auth/device/verify',{method:'POST',body:JSON.stringify({challenge_id:state.challengeId,answer:form.get('challenge_answer')})});storeTokens(tokens);return}const common={phone:form.get('phone'),password:form.get('password'),device_name:`TEKtalk Web · ${navigator.platform||'Browser'}`};if(state.mode==='register'){const tokens=await request('/v1/auth/register',{method:'POST',body:JSON.stringify({...common,display_name:form.get('display_name'),security_question:form.get('security_question'),security_answer:form.get('security_answer')})});$('#profileName').textContent=form.get('display_name');storeTokens(tokens)}else{const result=await request('/v1/auth/login',{method:'POST',body:JSON.stringify(common)});if(result.status==='authenticated')storeTokens(result.tokens);else{state.challengeId=result.challenge_id;$('#challengeQuestion').textContent=result.question;$('#challengeField').hidden=false;$('#authSubmit').textContent=translations[state.locale].verifyDevice}}}catch(e){error.textContent=e.message}}
 function enableDemo(){state.demo=true;sessionStorage.setItem('tektalk.demo','1');$('#profileName').textContent='TEKtalk Explorer';$('#profileId').textContent=translations[state.locale].demoWorkspace;$('#authDialog').close();setConnection(true);toast(translations[state.locale].demoEnabled)}
 function appendMessage(text,kind='outgoing',time=new Date()){const item=document.createElement('div');item.className=`message ${kind}`;const p=document.createElement('p');p.textContent=text;const clock=document.createElement('time');clock.textContent=time.toLocaleTimeString(state.locale,{hour:'2-digit',minute:'2-digit'});item.append(p,clock);$('#messageList').append(item);item.scrollIntoView({behavior:'smooth'})}
-async function sendMessage(event){event.preventDefault();const input=$('#messageInput');const text=input.value.trim();if(!text)return;appendMessage(text);input.value='';if(state.demo){setTimeout(()=>appendMessage(translations[state.locale].demoReply,'incoming'),450);return}if(!state.tokens){$('#authDialog').showModal();return}const recipient=localStorage.getItem('tektalk.recipient');const conversation=localStorage.getItem('tektalk.conversation');if(!recipient||!conversation){toast(translations[state.locale].recipientRequired);return}try{await request('/v1/chat/messages/send',{method:'POST',body:JSON.stringify({conversation_id:conversation,recipient_id:recipient,client_message_id:crypto.randomUUID(),text})})}catch(e){toast(e.message)} }
+function renderSession(){
+  $('#signOutButton').hidden=!state.tokens;
+  $('#chatControls').hidden=!state.tokens;
+  if(state.tokens){
+    $('#messageList').replaceChildren();
+    document.querySelector('.chat-header strong').textContent=translations[state.locale].directConversation;
+    $$('.conversation').forEach((item,index)=>{item.hidden=index>0;if(index===0){item.querySelector('strong').textContent=translations[state.locale].directConversation;item.querySelector('.conversation-copy span').textContent='';}});
+    document.querySelector('.nav-item b').hidden=true;
+  }
+}
+function signOut(){
+  state.tokens=null;state.demo=false;state.challengeId=null;
+  sessionStorage.removeItem('tektalk.tokens');sessionStorage.removeItem('tektalk.demo');
+  $('#authForm').reset();setAuthMode('login');$('#authSubmit').textContent=translations[state.locale].continue;
+  $('#messageList').replaceChildren();$('#profileId').textContent='';renderSession();
+  $('#authDialog').showModal();toast(translations[state.locale].signedOut);
+}
+async function syncMessages(){
+  if(!state.tokens)return;
+  const conversation=localStorage.getItem('tektalk.conversation');if(!conversation)return;
+  const rows=await request('/v1/chat/messages/history',{method:'POST',body:JSON.stringify({conversation_id:conversation,limit:50})});
+  $('#messageList').replaceChildren();
+  for(const row of rows)appendMessage(row.body,row.sender_id===state.tokens.user_id?'outgoing':'incoming',new Date(row.created_at));
+  return rows;
+}
+async function sendMessage(event){
+  event.preventDefault();const input=$('#messageInput');const text=input.value.trim();if(!text)return;
+  if(state.demo){appendMessage(text);input.value='';setTimeout(()=>appendMessage(translations[state.locale].demoReply,'incoming'),450);return}
+  if(!state.tokens){$('#authDialog').showModal();return}
+  const recipient=localStorage.getItem('tektalk.recipient'),conversation=localStorage.getItem('tektalk.conversation');
+  if(!recipient||!conversation){$('#chatDialog').showModal();return}
+  const button=$('#messageForm .send');button.disabled=true;
+  try{
+    const result=await request('/v1/chat/messages/send',{method:'POST',body:JSON.stringify({conversation_id:conversation,recipient_id:recipient,client_message_id:crypto.randomUUID(),text})});
+    appendMessage(result.message.body,'outgoing',new Date(result.message.created_at));input.value='';
+  }catch(e){toast(e.message)}finally{button.disabled=false}
+}
+$('#signOutButton').addEventListener('click',signOut);
+$('#configureChat').addEventListener('click',()=>$('#chatDialog').showModal());
+$('#syncHistory').addEventListener('click',()=>syncMessages().catch(e=>toast(e.message)));
+$('#chatForm').addEventListener('submit',async event=>{
+  event.preventDefault();const conversation=$('#conversationId').value.trim(),recipient=$('#recipientId').value.trim();
+  const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if(!uuid.test(conversation)||!uuid.test(recipient)){toast(translations[state.locale].invalidConversation);return}
+  localStorage.setItem('tektalk.conversation',conversation);localStorage.setItem('tektalk.recipient',recipient);
+  $('#chatDialog').close();toast(translations[state.locale].chatReady);await syncMessages().catch(e=>toast(e.message));
+});
 $$('.nav-item').forEach(button=>button.addEventListener('click',()=>activateTab(button.dataset.tab)));$('#themeButton').addEventListener('click',()=>setTheme(state.theme==='light'?'dark':'light'));$('#profileTheme').addEventListener('click',()=>setTheme(state.theme==='light'?'dark':'light'));$('#languageButton').addEventListener('click',()=>{state.locale=state.locale==='vi'?'en':'vi';localStorage.setItem('tektalk.locale',state.locale);translate();health()});$('#authButton').addEventListener('click',()=>$('#authDialog').showModal());$$('[data-auth-mode]').forEach(button=>button.addEventListener('click',()=>setAuthMode(button.dataset.authMode)));$('#authForm').addEventListener('submit',authenticate);$('#demoButton').addEventListener('click',enableDemo);$('#messageForm').addEventListener('submit',sendMessage);$('#messageInput').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();$('#messageForm').requestSubmit()}});$$('[data-prompt]').forEach(button=>button.addEventListener('click',()=>{activateTab('messages');appendMessage(button.textContent);setTimeout(()=>appendMessage(translations[state.locale].aiSimulated,'incoming'),350)}));
-setTheme(state.theme);translate();activateTab(location.hash.slice(1)||'messages');health();if(!state.tokens&&!state.demo)setTimeout(()=>$('#authDialog').showModal(),500);
+renderSession();setTheme(state.theme);translate();activateTab(location.hash.slice(1)||'messages');health();if(!state.tokens&&!state.demo)setTimeout(()=>$('#authDialog').showModal(),500);

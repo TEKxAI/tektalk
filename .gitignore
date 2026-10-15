@@ -7,3 +7,11 @@ DerivedData/
 .idea/
 .DS_Store
 
+
+# Screen recordings and ephemeral CI account credentials
+recordings/
+clients/ios/TEKtalkFlowTests/fixture.json
+clients/macos/TEKtalkMacFlowTests/fixture.json
+clients/ios/build-mvp/
+clients/macos/build-mvp/
+__pycache__/

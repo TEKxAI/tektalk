@@ -42,6 +42,21 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: vn.tektalk.ios.tests
         SWIFT_VERSION: "5.10"
         GENERATE_INFOPLIST_FILE: YES
+  TEKtalkFlowTests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+    - ../../scripts/visual/apple/MVPFlowTests.swift
+    - TEKtalkFlowTests
+    dependencies:
+    - target: TEKtalk
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: vn.tektalk.ios.flowtests
+        GENERATE_INFOPLIST_FILE: true
+        SWIFT_VERSION: '5.10'
+        INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: true
+        TEST_TARGET_NAME: TEKtalk
 schemes:
   TEKtalk:
     build:
@@ -50,3 +65,12 @@ schemes:
         TEKtalkTests: [test]
     test:
       targets: [TEKtalkTests]
+  TEKtalkMVP:
+    build:
+      targets:
+        TEKtalk: all
+        TEKtalkFlowTests:
+        - test
+    test:
+      targets:
+      - TEKtalkFlowTests
