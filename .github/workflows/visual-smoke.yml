@@ -10,7 +10,7 @@ on:
     branches: [main]
     paths:
       - "clients/**"
-      - "crates/client-core/**"
+      - "core/**"
       - "scripts/visual/**"
       - ".github/workflows/visual-smoke.yml"
 
