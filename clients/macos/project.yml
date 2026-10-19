@@ -11,6 +11,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: vn.tektalk.macos
+        # Named color catalogs do not define an application icon set.
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
         SWIFT_VERSION: "5.10"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: true
