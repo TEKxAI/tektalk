@@ -2,9 +2,16 @@ name: release-images
 on:
   push:
     tags: ["v*"]
-permissions: {contents: read, packages: write}
+permissions: {contents: read}
 jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+  security:
+    permissions: {contents: read, security-events: write}
+    uses: ./.github/workflows/security.yml
   images:
+    needs: [ci, security]
+    permissions: {contents: read, packages: write}
     strategy:
       matrix:
         include:

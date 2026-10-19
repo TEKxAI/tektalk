@@ -1,0 +1,6 @@
+# Reviewed false positives: Swift type annotations, not embedded key values.
+# Both matches are type names in declarations, with no embedded credentials.
+# Keep exceptions tied to the original commit/path/rule/line; never ignore a
+# whole file, commit, rule or secret value. See docs/ci-cd.md.
+71e6e72b9d2fab37d840025219701cd60292f260:clients/ios/TEKtalk/TEKProtocol.swift:generic-api-key:3
+50f2d4f6c4ea73d08dc1de6c76a4071a599ee398:clients/ios/ZChat/ZProtocol.swift:generic-api-key:3
