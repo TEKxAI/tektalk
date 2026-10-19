@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#6558f5">
   <title>TEKtalk Web</title>
+  <link rel="stylesheet" href="./design-tokens.css">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -21,9 +22,9 @@
 
     <main class="workspace">
       <nav class="rail" aria-label="Main navigation">
-        <button class="nav-item active" data-tab="messages"><span class="nav-icon">✦</span><span data-i18n="messages">Tin nhắn</span><b>3</b></button>
-        <button class="nav-item" data-tab="ai"><span class="nav-icon">⌁</span><span>AI</span></button>
-        <button class="nav-item" data-tab="me"><span class="nav-icon">○</span><span data-i18n="me">Cá nhân</span></button>
+        <button class="nav-item active" data-tab="messages"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4,3 L20,3 Q22,3 22,5 L22,15 Q22,17 20,17 L8,17 L3,21 L3,17 Q2,17 2,15 L2,5 Q2,3 4,3 Z" /></svg><span data-i18n="messages">Tin nhắn</span><b>3</b></button>
+        <button class="nav-item" data-tab="ai"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12,1 L15,9 L23,12 L15,15 L12,23 L9,15 L1,12 L9,9 Z" /></svg><span>AI</span></button>
+        <button class="nav-item" data-tab="me"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12,2 A5,5 0,1 1,12 12 A5,5 0,1 1,12 2 M2,22 Q2,14 12,14 Q22,14 22,22 Z" /></svg><span data-i18n="me">Cá nhân</span></button>
       </nav>
 
       <section id="messages" class="tab-panel active">

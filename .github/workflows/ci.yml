@@ -31,6 +31,10 @@ jobs:
           jq --exit-status . plugins/plugin-manifest.schema.json >/dev/null
           for manifest in plugins/*/manifest.json; do jq --exit-status . "$manifest" >/dev/null; done
           ./scripts/validate-plugins.sh
+      - name: Validate shared Design System
+        run: |
+          python3 scripts/generate-design-system.py --check
+          python3 scripts/test-design-system.py
       - name: Validate localization catalogs
         run: python3 scripts/validate-localization.py
       - uses: azure/setup-kubectl@v4

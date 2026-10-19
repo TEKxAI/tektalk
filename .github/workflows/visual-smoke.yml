@@ -27,6 +27,13 @@ jobs:
       - run: python3 scripts/visual/scenario.py backend
       - run: python3 scripts/visual/scenario.py prepare --platform web --fixture build/visual-fixtures/web.json
       - run: npm install --no-save playwright@1.55.1 && npx playwright install --with-deps chromium
+      - name: Verify shared navigation and light/dark appearance
+        run: node scripts/visual/test_design_system.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: design-system-web-previews
+          path: recordings/design-system
       - name: Record registration, logout, login, verification, send, receive and reload
         run: node scripts/visual/record_web_mvp.mjs
       - uses: actions/upload-artifact@v4
