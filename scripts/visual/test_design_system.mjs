@@ -35,9 +35,11 @@ try {
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile page must not overflow horizontally');
       const primary = await page.locator('html').evaluate(element => getComputedStyle(element).getPropertyValue('--tek-primary').trim());
       assert.equal(primary, theme === 'light' ? '#6558F5' : '#B1A6FF');
+      await assertChatLayout(page, 'mobile');
       await fs.mkdir('recordings/design-system', { recursive: true });
       await page.screenshot({ path: `recordings/design-system/web-${locale}-${theme}-mobile.png` });
       await page.setViewportSize({ width: 1280, height: 900 });
+      await assertChatLayout(page, 'desktop');
       await page.screenshot({ path: `recordings/design-system/web-${locale}-${theme}-desktop.png` });
       // System mode must react to OS preference changes without reloading.
       await page.evaluate(() => { localStorage.setItem('tektalk.theme', 'system'); });
@@ -50,4 +52,20 @@ try {
   }
 } finally {
   await browser.close();
+}
+
+async function assertChatLayout(page, viewport) {
+  // The toolbar is hidden in demo mode and visible after login. Both layouts
+  // must reserve the remaining space for messages, never for the composer.
+  for (const toolbarVisible of [false, true]) {
+    await page.locator('#chatControls').evaluate((element, visible) => { element.hidden = !visible; }, toolbarVisible);
+    const composer = await page.locator('.composer').boundingBox();
+    const messages = await page.locator('.message-list').boundingBox();
+    const panel = await page.locator('.chat-panel').boundingBox();
+    assert.ok(composer && messages && panel);
+    assert.ok(composer.height < 140, `${viewport}: composer must remain compact (toolbar=${toolbarVisible})`);
+    assert.ok(messages.height > panel.height / 2, `${viewport}: messages must fill available space`);
+    assert.ok(composer.y + composer.height <= panel.y + panel.height, `${viewport}: composer must fit inside chat`);
+  }
+  await page.locator('#chatControls').evaluate(element => { element.hidden = true; });
 }
