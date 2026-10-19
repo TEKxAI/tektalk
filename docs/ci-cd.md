@@ -49,7 +49,7 @@ before production use or removed when an upstream fix is available.
 `ci / architecture` lints every Actions workflow with actionlint. The CI and
 security workflows also support `workflow_call`. A `v*` tag runs both through
 `release-images`; container build/push jobs depend on both succeeding for that
-exact release commit. A failed gate prevents image publication. CI validates
+exact release commit. Images carry the exact `v*` tag and full commit SHA accepted by deploy; no floating `latest` tag is published. A failed gate prevents image publication. CI validates
 Docker builds and the local Compose stack; the visual workflow separately
 tests registration, login and chat on five platforms.
 

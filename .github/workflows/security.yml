@@ -18,7 +18,7 @@ jobs:
       - name: Generate dependency lockfile
         run: cargo generate-lockfile
       - uses: taiki-e/install-action@v2
-        with: {tool: "cargo-audit@0.21.2"}
+        with: {tool: "cargo-audit@0.22.2"}
       - name: Audit dependencies and fail on vulnerabilities on every trigger
         run: cargo audit --ignore RUSTSEC-2023-0071
   filesystem:
