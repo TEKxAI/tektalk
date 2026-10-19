@@ -2,9 +2,16 @@ name: release-images
 on:
   push:
     tags: ["v*"]
-permissions: {contents: read, packages: write}
+permissions: {contents: read}
 jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+  security:
+    permissions: {contents: read, security-events: write}
+    uses: ./.github/workflows/security.yml
   images:
+    needs: [ci, security]
+    permissions: {contents: read, packages: write}
     strategy:
       matrix:
         include:
@@ -18,7 +25,12 @@ jobs:
         with: {registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
       - uses: docker/metadata-action@v5
         id: meta
-        with: {images: "ghcr.io/${{ github.repository }}/${{ matrix.name }}"}
+        with:
+          images: "ghcr.io/${{ github.repository }}/${{ matrix.name }}"
+          flavor: latest=false
+          tags: |
+            type=raw,value=${{ github.ref_name }}
+            type=raw,value=${{ github.sha }}
       - uses: docker/build-push-action@v6
         with:
           context: .

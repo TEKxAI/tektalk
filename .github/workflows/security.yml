@@ -7,7 +7,8 @@ on:
   pull_request:
   schedule: [{cron: "17 2 * * 1"}]
   workflow_dispatch:
-permissions: {contents: read, checks: write, security-events: write}
+  workflow_call:
+permissions: {contents: read}
 jobs:
   dependencies:
     runs-on: ubuntu-latest
@@ -16,11 +17,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Generate dependency lockfile
         run: cargo generate-lockfile
-      - uses: rustsec/audit-check@v2
-        with:
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          ignore: RUSTSEC-2023-0071
+      - uses: taiki-e/install-action@v2
+        with: {tool: "cargo-audit@0.22.2"}
+      - name: Audit dependencies and fail on vulnerabilities on every trigger
+        run: cargo audit --ignore RUSTSEC-2023-0071
   filesystem:
+    permissions: {contents: read, security-events: write}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,13 +35,23 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: "1"
       - uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: ${{ !cancelled() && hashFiles('trivy-results.sarif') != '' }}
         with: {sarif_file: trivy-results.sarif}
   secrets:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
-      - uses: gitleaks/gitleaks-action@v2
-        env: {GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}
+      - name: Install pinned Gitleaks with release checksum verification
+        run: bash scripts/ci/install-gitleaks.sh
+      - name: Verify secret detection and narrow historical exceptions
+        run: python3 scripts/ci/test-secret-scan.py
+      - name: Scan all Git history on every trigger
+        run: gitleaks git --redact --log-opts="--full-history --all" --report-format=sarif --report-path=gitleaks-results.sarif .
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && hashFiles('gitleaks-results.sarif') != '' }}
+        with:
+          name: gitleaks-results
+          path: gitleaks-results.sarif
+          if-no-files-found: error
 
