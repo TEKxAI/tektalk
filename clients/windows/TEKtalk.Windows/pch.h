@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <tuple>
 #include <utility>
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>

@@ -22,6 +22,9 @@ try {
       const desktop = await page.locator('.rail').boundingBox();
       const workspace = await page.locator('#messages').boundingBox();
       assert.ok(desktop && workspace && desktop.x + desktop.width <= workspace.x + 1, 'Desktop navigation must be left of content');
+      const desktopTabBoxes = await tabs.evaluateAll(items => items.map(item => item.getBoundingClientRect()).map(({ x, y, width, height }) => ({ x, y, width, height })));
+      assert.ok(desktopTabBoxes.every(box => Math.abs(box.y - desktopTabBoxes[0].y) < 1), 'Desktop tabs must share one horizontal row');
+      assert.ok(desktopTabBoxes.every((box, index) => index === 0 || box.x > desktopTabBoxes[index - 1].x), 'Desktop tabs must run left to right');
       for (const [index, name] of ['messages', 'ai', 'me'].entries()) {
         await tabs.nth(index).click();
         assert.equal(await tabs.nth(index).getAttribute('aria-current'), 'page');
@@ -34,7 +37,7 @@ try {
       assert.ok(mobile && content && mobile.y >= content.y + content.height - 1, 'Mobile navigation must be below content');
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile page must not overflow horizontally');
       const primary = await page.locator('html').evaluate(element => getComputedStyle(element).getPropertyValue('--tek-primary').trim());
-      assert.equal(primary, theme === 'light' ? '#6558F5' : '#B1A6FF');
+      assert.equal(primary, theme === 'light' ? '#0089FF' : '#63B5FF');
       await assertChatLayout(page, 'mobile');
       await fs.mkdir('recordings/design-system', { recursive: true });
       await page.screenshot({ path: `recordings/design-system/web-${locale}-${theme}-mobile.png` });
