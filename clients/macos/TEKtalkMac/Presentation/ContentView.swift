@@ -60,9 +60,12 @@ private struct HostView: View {
                                 Text(L("tab.\(item.rawValue.lowercased())")).font(.caption2).lineLimit(1)
                             }
                             .frame(maxWidth: .infinity, minHeight: TekDesign.Layout.touchTarget)
+                            .contentShape(Rectangle())
                             .foregroundStyle(selection == item ? TekDesign.onPrimaryContainer : TekDesign.muted)
                             .background(selection == item ? TekDesign.primaryContainer : Color.clear, in: RoundedRectangle(cornerRadius: TekDesign.Radius.control))
                         }
+                        .frame(maxWidth: .infinity, minHeight: TekDesign.Layout.touchTarget)
+                        .contentShape(Rectangle())
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("tab.\(item.rawValue.lowercased())")
                         .accessibilityAddTraits(selection == item ? .isSelected : [])

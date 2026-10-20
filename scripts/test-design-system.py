@@ -36,6 +36,8 @@ macos_recorder = (root / 'scripts/visual/apple/RecordWindow.swift').read_text()
 assert '@media(min-width:821px){.rail{flex-direction:row' in web_css
 assert 'HStack(spacing: TekDesign.Spacing.xs)' in macos_host
 assert 'NavigationSplitView' not in macos_host
+assert macos_host.count('.contentShape(Rectangle())') >= 2
+assert macos_host.count('.frame(maxWidth: .infinity, minHeight: TekDesign.Layout.touchTarget)') >= 2
 assert 'tabRow.Orientation(Orientation::Horizontal)' in windows_host
 assert 'NavigationView()' not in windows_host
 assert 'streamError.domain == SCStreamErrorDomain && streamError.code == -3808' in macos_recorder
