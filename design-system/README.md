@@ -7,8 +7,8 @@ CI rejects stale generated resources and text contrast below 4.5:1.
 
 | Semantic role | Light | Dark |
 | --- | --- | --- |
-| Primary / brand | `#6558F5` | `#B1A6FF` |
-| Text on primary | `#FFFFFF` | `#221A57` |
+| Primary / brand | `#0089FF` | `#63B5FF` |
+| Text on primary | `#001B2B` | `#001B2B` |
 | Background | `#F5F6FB` | `#11121A` |
 | Surface | `#FFFFFF` | `#191A24` |
 | Surface variant | `#EEEFF7` | `#252632` |
@@ -24,19 +24,22 @@ platform conventions. Do not introduce a custom font that defeats text scaling.
 
 The spacing scale is 4 / 8 / 12 / 16 / 24 / 32 / 48 logical units. Control,
 bubble and card radii are 12 / 18 / 24. Navigation targets are at least 48 units;
-desktop sidebar width is 224. Native controls may apply their platform's own
-metrics where necessary for accessibility.
+desktop sidebar width is 224. Desktop hosts place the same three Mobile tabs
+in one horizontal row at the top of the left panel, with destination content
+in the right panel. Native controls may apply their platform's own metrics
+where necessary for accessibility.
 
 ## Platform adapters
 
 - iOS/macOS: generated named color assets supply light/dark variants; SwiftUI
   `TekDesign` exposes the colors and dimensions. System appearance updates
   automatically. Compact iPhone uses bottom tabs; regular iPad and macOS use
-  a left navigation panel and right content with the same three destinations.
+  a left panel with a horizontal tab row and right content with the same three
+  destinations.
 - Android: generated light/dark Material 3 schemes and tab vector assets.
   Compact windows use bottom navigation; widths of 820 dp or more use a rail.
-- Windows: generated WinUI theme resources and a native left NavigationView.
-  No extra Settings destination is inserted. The content appears on the right.
+- Windows: generated WinUI theme resources and a left panel with a native
+  horizontal tab row. The content appears on the right.
 - Web: generated CSS custom properties; native system font stack, keyboard
   focus, reduced motion and safe-area handling. A left panel appears above
   820 CSS pixels; compact layouts use bottom tabs. Theme cycles system / light /

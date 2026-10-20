@@ -47,8 +47,47 @@ private enum Destination: String, CaseIterable, Identifiable { case message = "M
 
 private struct HostView: View {
     let tokens: Tokens
-    @State private var selection: Destination? = .message
-    var body: some View { NavigationSplitView { List(Destination.allCases, selection: $selection) { item in Label(L("tab.\(item.rawValue.lowercased())"), systemImage: item.icon).frame(minHeight: TekDesign.Layout.touchTarget).accessibilityIdentifier("tab.\(item.rawValue.lowercased())").tag(item) }.navigationTitle("TEKtalk").navigationSplitViewColumnWidth(min: 200, ideal: TekDesign.Layout.sidebar, max: 280) } detail: { switch selection ?? .message { case .message: ChatView(tokens: tokens); case .ai: AIView(); case .me: MeView(tokens: tokens) } } }
+    @State private var selection: Destination = .message
+    var body: some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: TekDesign.Spacing.lg) {
+                Text("TEKtalk").font(.title2.bold()).padding(.horizontal, TekDesign.Spacing.md)
+                HStack(spacing: TekDesign.Spacing.xs) {
+                    ForEach(Destination.allCases) { item in
+                        Button { selection = item } label: {
+                            VStack(spacing: TekDesign.Spacing.xs) {
+                                Image(systemName: item.icon).font(.system(size: 18, weight: .semibold))
+                                Text(L("tab.\(item.rawValue.lowercased())")).font(.caption2).lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: TekDesign.Layout.touchTarget)
+                            .contentShape(Rectangle())
+                            .foregroundStyle(selection == item ? TekDesign.onPrimaryContainer : TekDesign.muted)
+                            .background(selection == item ? TekDesign.primaryContainer : Color.clear, in: RoundedRectangle(cornerRadius: TekDesign.Radius.control))
+                        }
+                        .frame(maxWidth: .infinity, minHeight: TekDesign.Layout.touchTarget)
+                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("tab.\(item.rawValue.lowercased())")
+                        .accessibilityAddTraits(selection == item ? .isSelected : [])
+                    }
+                }
+                Spacer()
+            }
+            .padding(TekDesign.Spacing.sm)
+            .frame(width: TekDesign.Layout.sidebar)
+            .background(TekDesign.surface)
+            Divider()
+            Group {
+                switch selection {
+                case .message: ChatView(tokens: tokens)
+                case .ai: AIView()
+                case .me: MeView(tokens: tokens)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(TekDesign.background)
+        }
+    }
 }
 
 private struct ChatView: View {

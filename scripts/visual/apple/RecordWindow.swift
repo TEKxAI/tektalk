@@ -67,7 +67,18 @@ struct RecordWindow {
         while !FileManager.default.fileExists(atPath:stop) && Date() < timeout && !FileManager.default.fileExists(atPath:failed.path) {
             try await Task.sleep(nanoseconds:100_000_000)
         }
-        try await stream.stopCapture()
+        do {
+            try await stream.stopCapture()
+        } catch {
+            let streamError = error as NSError
+            // A desktop-independent window stream stops automatically when the
+            // tested app closes its last window. Treat only that already-stopped
+            // state as success and still require the recording delegate markers
+            // below; every other ScreenCaptureKit error remains fatal.
+            guard streamError.domain == SCStreamErrorDomain && streamError.code == -3808 else {
+                throw error
+            }
+        }
         let flushDeadline=Date().addingTimeInterval(30)
         while !FileManager.default.fileExists(atPath:finished.path) && !FileManager.default.fileExists(atPath:failed.path) && Date() < flushDeadline {
             try await Task.sleep(nanoseconds:100_000_000)

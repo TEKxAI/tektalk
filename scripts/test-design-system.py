@@ -27,4 +27,18 @@ for mode, colors in tokens['colors'].items():
         print(f'{mode}: {foreground}/{background} = {contrast:.2f}:1')
 assert [tab['id'] for tab in tokens['navigation']] == ['message', 'ai', 'me']
 assert tokens['layout']['touchTarget'] >= 44
-print('Light/dark text contrast and shared navigation contract passed.')
+
+root = Path(__file__).resolve().parents[1]
+web_css = (root / 'clients/web/styles.css').read_text()
+macos_host = (root / 'clients/macos/TEKtalkMac/Presentation/ContentView.swift').read_text()
+windows_host = (root / 'clients/windows/TEKtalk.Windows/MainWindow.xaml.cpp').read_text()
+macos_recorder = (root / 'scripts/visual/apple/RecordWindow.swift').read_text()
+assert '@media(min-width:821px){.rail{flex-direction:row' in web_css
+assert 'HStack(spacing: TekDesign.Spacing.xs)' in macos_host
+assert 'NavigationSplitView' not in macos_host
+assert macos_host.count('.contentShape(Rectangle())') >= 2
+assert macos_host.count('.frame(maxWidth: .infinity, minHeight: TekDesign.Layout.touchTarget)') >= 2
+assert 'tabRow.Orientation(Orientation::Horizontal)' in windows_host
+assert 'NavigationView()' not in windows_host
+assert 'streamError.domain == SCStreamErrorDomain && streamError.code == -3808' in macos_recorder
+print('Light/dark contrast and shared horizontal desktop navigation contract passed.')

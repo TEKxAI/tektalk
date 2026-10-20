@@ -6,10 +6,10 @@ import androidx.compose.ui.graphics.Color
 
 object TekDesign {
     private val light = lightColorScheme(
-        primary = Color(0xFF6558F5),
-        onPrimary = Color(0xFFFFFFFF),
-        primaryContainer = Color(0xFFEAE7FF),
-        onPrimaryContainer = Color(0xFF392D99),
+        primary = Color(0xFF0089FF),
+        onPrimary = Color(0xFF001B2B),
+        primaryContainer = Color(0xFFD8EDFF),
+        onPrimaryContainer = Color(0xFF00324F),
         background = Color(0xFFF5F6FB),
         onBackground = Color(0xFF20202A),
         surface = Color(0xFFFFFFFF),
@@ -19,16 +19,16 @@ object TekDesign {
         outline = Color(0xFFDBDDE9),
         error = Color(0xFFC63447),
         onError = Color(0xFFFFFFFF),
-        secondary = Color(0xFF6558F5),
-        onSecondary = Color(0xFFFFFFFF),
-        secondaryContainer = Color(0xFFEAE7FF),
-        onSecondaryContainer = Color(0xFF392D99)
+        secondary = Color(0xFF0089FF),
+        onSecondary = Color(0xFF001B2B),
+        secondaryContainer = Color(0xFFD8EDFF),
+        onSecondaryContainer = Color(0xFF00324F)
     )
     private val dark = darkColorScheme(
-        primary = Color(0xFFB1A6FF),
-        onPrimary = Color(0xFF221A57),
-        primaryContainer = Color(0xFF35305E),
-        onPrimaryContainer = Color(0xFFE9E3FF),
+        primary = Color(0xFF63B5FF),
+        onPrimary = Color(0xFF001B2B),
+        primaryContainer = Color(0xFF003C60),
+        onPrimaryContainer = Color(0xFFCBE6FF),
         background = Color(0xFF11121A),
         onBackground = Color(0xFFF4F3FA),
         surface = Color(0xFF191A24),
@@ -38,10 +38,10 @@ object TekDesign {
         outline = Color(0xFF444654),
         error = Color(0xFFFFB1BC),
         onError = Color(0xFF67001A),
-        secondary = Color(0xFFB1A6FF),
-        onSecondary = Color(0xFF221A57),
-        secondaryContainer = Color(0xFF35305E),
-        onSecondaryContainer = Color(0xFFE9E3FF)
+        secondary = Color(0xFF63B5FF),
+        onSecondary = Color(0xFF001B2B),
+        secondaryContainer = Color(0xFF003C60),
+        onSecondaryContainer = Color(0xFFCBE6FF)
     )
     const val wideBreakpoint = 820
     const val bubbleRadius = 18
