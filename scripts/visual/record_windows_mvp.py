@@ -13,9 +13,10 @@ def control(id):
 def tap(id):control(id).click_input();time.sleep(.9)
 def fill(id,text):
     e=control(id);e.click_input();send_keys('^a{BACKSPACE}');send_keys(text.replace('+','{+}').replace('(','{(}').replace(')','{)}'),with_spaces=True,pause=.06);time.sleep(.5)
-def visible(text):
+def visible(text,in_chat=True):
     # A sidebar preview can contain the same text; prove it is in the chat pane.
-    window.child_window(auto_id='chat.messages').child_window(title=text,control_type='Text').wait('visible',timeout=30)
+    scope=window.child_window(auto_id='chat.messages') if in_chat else window
+    scope.child_window(title=text,control_type='Text').wait('visible',timeout=30)
 Path('recordings').mkdir(exist_ok=True)
 record=subprocess.Popen(['ffmpeg','-y','-f','gdigrab','-framerate','15','-draw_mouse','1','-i','desktop','-c:v','libx264','-preset','ultrafast','-crf','24','-pix_fmt','yuv420p','recordings/windows.mp4'],stdin=subprocess.PIPE,stdout=open('recordings/windows-recorder.log','wb'),stderr=subprocess.STDOUT)
 complete=False
@@ -28,7 +29,7 @@ try:
     tabs=[control(id).rectangle() for id in ('tab.Message','tab.AI','tab.Me')]
     assert all(abs(tab.top-tabs[0].top)<=1 for tab in tabs), 'Tabs must share one row'
     assert all(abs(tab.bottom-window.rectangle().bottom)<32 for tab in tabs), 'Tabs must be pinned to the bottom'
-    tap('tab.AI');visible('TEK AI');tap('tab.Me');tap('auth.logout')
+    tap('tab.AI');visible('TEK AI',in_chat=False);tap('tab.Me');tap('auth.logout')
     fill('auth.phone',f['phone']);fill('auth.password',f['password']);tap('auth.submit');control('auth.answer');time.sleep(2)
     fill('auth.answer',f['answer']);tap('auth.submit');control('chat.conversation')
     fill('chat.conversation',f['conversation']);fill('chat.recipient',f['peer_id']);fill('chat.draft',f['outgoing']);time.sleep(1.5);tap('chat.send');visible(f['outgoing']);time.sleep(2)
