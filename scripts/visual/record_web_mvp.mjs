@@ -13,14 +13,18 @@ async function submit(path){const response=page.waitForResponse(r=>r.url().endsW
 let complete=false;
 try{
   await page.goto(apiUrl);await page.locator('#authDialog').waitFor({state:'visible'});await pause();
+  assert.equal(await page.locator('#appShell').isVisible(),false,'No application behind sign-in');
   await page.locator('[data-auth-mode="register"]').click();
   await type('[name="phone"]',f.phone);await type('[name="display_name"]','MVP Learner');await type('[name="password"]',f.password);await type('[name="security_question"]',f.question);await type('[name="security_answer"]',f.answer);await pause();
   const registered=await submit('/v1/auth/register');assert.ok(registered.user_id);await page.locator('#authDialog').waitFor({state:'hidden'});await pause();
+  await page.locator('[data-tab="me"]').click();await pause();
   await page.locator('#signOutButton').click();await page.locator('#authDialog').waitFor({state:'visible'});await pause();
+  assert.equal(await page.locator('#appShell').isVisible(),false,'Sign-out must leave only authentication');
   await type('[name="phone"]',f.phone);await type('[name="password"]',f.password);await pause();
   const login=await submit('/v1/auth/login');assert.equal(login.status,'device_verification_required');await page.locator('#challengeField').waitFor({state:'visible'});await pause();
+  assert.equal(await page.locator('#appShell').isVisible(),false,'Device verification is still authentication');
   await type('[name="challenge_answer"]',f.answer);const verified=await submit('/v1/auth/device/verify');assert.equal(verified.user_id,registered.user_id);await page.locator('#authDialog').waitFor({state:'hidden'});await pause();
-  await page.locator('#configureChat').click();await type('#conversationId',f.conversation);await type('#recipientId',f.peer_id);await page.locator('#openConversation').click();await page.locator('#chatDialog').waitFor({state:'hidden'});await pause();
+  await type('#conversationId',f.conversation);await type('#recipientId',f.peer_id);await page.locator('#syncHistory').click();await pause();
   await type('#messageInput',f.outgoing);await pause();
   const sentResponse=page.waitForResponse(r=>r.url().endsWith('/v1/chat/messages/send')&&r.request().method()==='POST');await page.locator('#messageForm .send').click();const sent=await sentResponse;assert.ok(sent.ok(),await sent.text());await page.locator('.message').getByText(f.outgoing,{exact:true}).waitFor();await pause();
   const history=await api.post('/v1/chat/messages/history',{headers:{authorization:`Bearer ${f.peer_token}`},data:{conversation_id:f.conversation,limit:50}});assert.ok(history.ok());const rows=await history.json();const outgoing=rows.find(x=>x.body===f.outgoing);assert.ok(outgoing,'Message must exist in recipient history');
