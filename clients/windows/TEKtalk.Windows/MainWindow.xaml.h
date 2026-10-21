@@ -10,6 +10,16 @@ private:
     Microsoft::UI::Xaml::Controls::Grid root_{nullptr},content_{nullptr}; Microsoft::UI::Xaml::Controls::TextBox phone_{nullptr},name_{nullptr},question_{nullptr},answer_{nullptr},conversation_{nullptr},recipient_{nullptr},draft_{nullptr}; Microsoft::UI::Xaml::Controls::PasswordBox password_{nullptr}; Microsoft::UI::Xaml::Controls::TextBlock status_{nullptr}; Microsoft::UI::Xaml::Controls::ListView messages_{nullptr}; std::vector<Microsoft::UI::Xaml::Controls::Button> tabs_;
     void ShowAuth();void ShowHost();void ShowMessage();void ShowAI();void ShowMe();
     void SelectTab(uint32_t index);
+    struct RecentChat { winrt::hstring id,recipient,preview; };
+    std::vector<RecentChat> recent_;
+    uint32_t activeTab_{};
+    Microsoft::UI::Xaml::Controls::StackPanel sidebarContent_{nullptr};
+    Microsoft::UI::Xaml::Controls::Grid messageContent_{nullptr};
+    void ShowSidebar(uint32_t index);
+    void RememberConversation(winrt::hstring const& preview);
+    void AppendMessage(winrt::hstring const& body,bool mine);
+    static Microsoft::UI::Xaml::Media::Brush Brush(wchar_t const* key);
+    static void Primary(Microsoft::UI::Xaml::Controls::Button const& button);
     winrt::Windows::Foundation::IAsyncAction SubmitAuth();winrt::Windows::Foundation::IAsyncAction LoadMessages();winrt::Windows::Foundation::IAsyncAction SendMessage();
     static Microsoft::UI::Xaml::Controls::TextBlock Text(winrt::hstring const&,double=14,bool=false);
 };

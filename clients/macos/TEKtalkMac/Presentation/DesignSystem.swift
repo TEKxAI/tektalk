@@ -30,8 +30,21 @@ enum TekDesign {
         static let card: CGFloat = 24
     }
     enum Layout {
-        static let sidebar: CGFloat = 224
+        static let sidebar: CGFloat = 320
         static let touchTarget: CGFloat = 48
         static let wideBreakpoint: CGFloat = 820
+    }
+}
+
+struct TekPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
+            .foregroundStyle(TekDesign.onPrimary)
+            .padding(.horizontal, TekDesign.Spacing.lg)
+            .frame(minHeight: TekDesign.Layout.touchTarget)
+            .background(TekDesign.primary, in: RoundedRectangle(cornerRadius: TekDesign.Radius.control))
+            .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.5)
     }
 }

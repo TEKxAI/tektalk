@@ -70,6 +70,11 @@ final class MVPFlowTests: XCTestCase {
         }
         Thread.sleep(forTimeInterval:1);tap("auth.submit")
         #if os(macOS)
+        let tabs=element("navigation.bottom").frame
+        let sidebar=element("sidebar.content").frame
+        XCTAssertGreaterThanOrEqual(tabs.minY, sidebar.maxY - 1, "Tabs must sit below history")
+        tap("tab.ai")
+        XCTAssertTrue(app.staticTexts["TEK AI"].firstMatch.waitForExistence(timeout:10))
         tap("tab.me")
         #else
         let me=app.tabBars.buttons["Me"];XCTAssertTrue(me.waitForExistence(timeout:30));me.tap()
@@ -82,7 +87,11 @@ final class MVPFlowTests: XCTestCase {
         fill("chat.conversation",f["conversation"]!);fill("chat.recipient",f["peer_id"]!);fill("chat.draft",f["outgoing"]!)
         XCTAssertTrue(element("chat.send").isEnabled, "Send disabled: \(app.debugDescription)")
         tap("chat.send")
+        #if os(macOS)
+        let sent=element("chat.messages").staticTexts[f["outgoing"]!].firstMatch
+        #else
         let sent=app.staticTexts[f["outgoing"]!].firstMatch
+        #endif
         XCTAssertTrue(sent.waitForExistence(timeout:30))
         XCTAssertTrue(sent.isHittable, "Outgoing message is outside the visible chat")
         Thread.sleep(forTimeInterval:2)
@@ -90,10 +99,21 @@ final class MVPFlowTests: XCTestCase {
         let outgoing=try XCTUnwrap(rows.first {($0["body"] as? String)==f["outgoing"]})
         _=try post("/v1/chat/messages/send",["conversation_id":f["conversation"]!,"recipient_id":try XCTUnwrap(outgoing["sender_id"]),"client_message_id":UUID().uuidString,"text":f["incoming"]!])
         tap("chat.sync")
+        #if os(macOS)
+        let received=element("chat.messages").staticTexts[f["incoming"]!].firstMatch
+        #else
         let received=app.staticTexts[f["incoming"]!].firstMatch
+        #endif
         XCTAssertTrue(received.waitForExistence(timeout:30))
         XCTAssertTrue(received.isHittable, "Reply is outside the visible chat")
         received.tap()
+        #if os(macOS)
+        fill("chat.draft","Draft preserved across tabs")
+        tap("tab.ai");tap("tab.me");tap("tab.message")
+        XCTAssertEqual(element("chat.draft").value as? String,"Draft preserved across tabs")
+        XCTAssertTrue(received.isHittable, "History must survive switching tabs")
+        XCTAssertTrue(element("history."+f["conversation"]!).isHittable)
+        #endif
         let proof=XCTAttachment(screenshot:app.screenshot())
         proof.name="visible-bidirectional-chat";proof.lifetime = .keepAlways;add(proof)
         Thread.sleep(forTimeInterval:8)

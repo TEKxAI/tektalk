@@ -35,7 +35,21 @@ def outputs():
             swift += f'    enum {group.capitalize()} {{\n'
             swift += ''.join(f'        static let {key}: CGFloat = {value}\n' for key, value in TOKENS[group].items())
             swift += '    }\n'
-        swift += '}\n'
+        swift += '''}
+
+struct TekPrimaryButtonStyle: ButtonStyle {
+    @Environment(\\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
+            .foregroundStyle(TekDesign.onPrimary)
+            .padding(.horizontal, TekDesign.Spacing.lg)
+            .frame(minHeight: TekDesign.Layout.touchTarget)
+            .background(TekDesign.primary, in: RoundedRectangle(cornerRadius: TekDesign.Radius.control))
+            .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.5)
+    }
+}
+'''
         files[f'{base}/Presentation/DesignSystem.swift'] = swift
         asset = f'{base}/DesignSystem.xcassets'
         files[f'{asset}/Contents.json'] = json.dumps({'info': {'author': 'xcode', 'version': 1}}, indent=2) + '\n'

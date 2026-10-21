@@ -21,11 +21,17 @@ complete=False
 try:
     time.sleep(2);tap('auth.toggle')
     for id,value in [('auth.phone',f['phone']),('auth.name','MVP Learner'),('auth.password',f['password']),('auth.question',f['question']),('auth.answer',f['answer'])]:fill(id,value)
-    time.sleep(1.5);tap('auth.submit');tap('tab.Me');tap('auth.logout')
+    time.sleep(1.5);tap('auth.submit')
+    tabs=control('navigation.bottom').rectangle()
+    assert tabs.top>window.rectangle().top+window.rectangle().height()/2, 'Desktop tabs must be at the bottom'
+    tap('tab.AI');visible('TEK AI');tap('tab.Me');tap('auth.logout')
     fill('auth.phone',f['phone']);fill('auth.password',f['password']);tap('auth.submit');control('auth.answer');time.sleep(2)
     fill('auth.answer',f['answer']);tap('auth.submit');control('chat.conversation')
     fill('chat.conversation',f['conversation']);fill('chat.recipient',f['peer_id']);fill('chat.draft',f['outgoing']);time.sleep(1.5);tap('chat.send');visible(f['outgoing']);time.sleep(2)
-    verify_reply(f);tap('chat.sync');visible(f['incoming']);time.sleep(3);complete=True
+    verify_reply(f);tap('chat.sync');visible(f['incoming'])
+    fill('chat.draft','Draft preserved across tabs');tap('tab.AI');tap('tab.Me');tap('tab.Message')
+    assert control('chat.draft').get_value()=='Draft preserved across tabs'
+    visible(f['incoming']);control('history.'+f['conversation']);time.sleep(3);complete=True
 finally:
     if record.poll() is None:
         record.communicate(b'q\n',timeout=30)

@@ -4,7 +4,7 @@ private func L(_ key: String) -> String { NSLocalizedString(key, comment: "") }
 
 struct ContentView: View {
     @State private var tokens: Tokens?
-    var body: some View { Group { if let tokens { HostTabs(tokens: tokens) { self.tokens=nil } } else { AuthView { tokens=$0 } } }.tint(TekDesign.primary).background(TekDesign.surface) }
+    var body: some View { Group { if let tokens { HostTabs(tokens: tokens) { self.tokens=nil } } else { AuthView { tokens=$0 } } }.tint(TekDesign.primary).foregroundStyle(TekDesign.text).background(TekDesign.surface) }
 }
 
 private struct AuthView: View {
@@ -14,7 +14,7 @@ private struct AuthView: View {
         Spacer(minLength:60);Text("TEKtalk").font(.system(size:42,weight:.bold));Text(mode == .verify ? serverQuestion : mode == .register ? L("auth.create_core_account") : L("auth.tagline")).foregroundStyle(TekDesign.muted)
         if mode != .verify { TextField(L("auth.phone_e164"),text:$phone).accessibilityIdentifier("auth.phone").textContentType(.telephoneNumber).textFieldStyle(.roundedBorder);if mode == .register { TextField(L("auth.display_name"),text:$name).accessibilityIdentifier("auth.name").textFieldStyle(.roundedBorder) };SecureField(L("auth.password"),text:$password).accessibilityIdentifier("auth.password").textFieldStyle(.roundedBorder);if mode == .register { TextField(L("auth.security_question"),text:$question).accessibilityIdentifier("auth.question").textFieldStyle(.roundedBorder);SecureField(L("auth.answer"),text:$answer).accessibilityIdentifier("auth.answer").textFieldStyle(.roundedBorder) } } else { SecureField(L("auth.security_answer"),text:$answer).accessibilityIdentifier("auth.answer").textFieldStyle(.roundedBorder) }
         if !error.isEmpty { Text(error).font(.footnote).foregroundStyle(TekDesign.error) }
-        Button(busy ? L("auth.working") : mode == .login ? L("auth.sign_in") : mode == .register ? L("auth.sign_up") : L("auth.verify_device")){ Task { await submit() } }.accessibilityIdentifier("auth.submit").buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth:.infinity).disabled(busy)
+        Button { Task { await submit() } } label: { Text(busy ? L("auth.working") : mode == .login ? L("auth.sign_in") : mode == .register ? L("auth.sign_up") : L("auth.verify_device")).frame(maxWidth: .infinity) }.accessibilityIdentifier("auth.submit").buttonStyle(TekPrimaryButtonStyle()).disabled(busy)
         if mode != .verify { Button(mode == .login ? L("auth.switch_to_register") : L("auth.switch_to_login")){mode = mode == .login ? .register : .login;error=""}.accessibilityIdentifier("auth.toggle").frame(maxWidth:.infinity) }
     }.padding(28) } } }
     @MainActor private func submit() async { if let validation=InputValidator.auth(mode:mode,phone:phone,password:password,displayName:name,securityQuestion:question,securityAnswer:answer){error=validation;return};busy=true;error="";defer{busy=false};do{let api=APIClient();switch mode{case .register:authenticated(try await api.register(phone:phone,name:name,password:password,question:question,answer:answer));case .verify:guard let challenge else{error=L("auth.invalid_verification_session");return};authenticated(try await api.verify(challenge:challenge,answer:answer));case .login:let response=try await api.login(phone:phone,password:password,deviceId:nil);if let tokens=response.tokens{authenticated(tokens)}else{challenge=response.challenge_id;serverQuestion=response.question ?? L("auth.verify_device");answer="";mode=AuthFlow.nextMode(for:response)}}}catch{self.error=error.localizedDescription}}
@@ -111,6 +111,7 @@ private struct ChatRoom: View {
                     .textFieldStyle(.roundedBorder)
                 Button(L("message.send")) { Task { await send() } }
                     .accessibilityIdentifier("chat.send")
+                    .buttonStyle(TekPrimaryButtonStyle())
                     .disabled(draft.isEmpty || UUID(uuidString:conversation)==nil || UUID(uuidString:recipient)==nil)
             }.padding().background(.bar)
         }

@@ -38,4 +38,7 @@
   <data name="SignOut" xml:space="preserve"><value>Sign out</value></data>
   <data name="RustCoreConnectedLabel" xml:space="preserve"><value>Rust Core: Connected</value></data>
   <data name="RustCoreFallbackLabel" xml:space="preserve"><value>Rust Core: Fallback</value></data>
+  <data name="DirectConversation" xml:space="preserve"><value>Direct conversation</value></data>
+  <data name="ConversationUuid" xml:space="preserve"><value>Conversation UUID</value></data>
+  <data name="RecipientUuid" xml:space="preserve"><value>Recipient UUID</value></data>
 </root>
