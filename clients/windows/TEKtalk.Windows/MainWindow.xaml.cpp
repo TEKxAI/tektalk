@@ -32,12 +32,14 @@ void MainWindow::ShowHost() {
     for(auto const& entry:entries) {
         tabRow.ColumnDefinitions().Append(ColumnDefinition());
         Button button; button.HorizontalAlignment(HorizontalAlignment::Stretch);
-        button.MinHeight(tektalk::design::TouchTarget); button.Padding({2,8,2,8}); button.BorderThickness({0}); button.CornerRadius({12,12,12,12});
+        button.MinHeight(tektalk::design::TouchTarget); button.Padding({0}); button.BorderThickness({0}); button.CornerRadius({12,12,12,12});
+        button.HorizontalContentAlignment(HorizontalAlignment::Stretch);
         Aid(button,std::get<2>(entry).c_str());
         auto label=StackPanel(); label.Spacing(4); label.HorizontalAlignment(HorizontalAlignment::Center);
         auto icon=FontIcon(); icon.Glyph(std::get<1>(entry)); label.Children().Append(icon);
         auto caption=Text(std::get<0>(entry),11,true); caption.HorizontalAlignment(HorizontalAlignment::Center); label.Children().Append(caption);
-        button.Content(label); auto selected=index++;
+        Border pill; pill.Padding({2,8,2,8}); pill.CornerRadius({12,12,12,12}); pill.Child(label);
+        button.Content(pill); auto selected=index++;
         button.Click([this,selected](auto&&,auto&&){if(selected==0)ShowMessage();else if(selected==1)ShowAI();else ShowMe();});
         Grid::SetColumn(button,selected); tabs_.push_back(button); tabRow.Children().Append(button);
     }
@@ -88,6 +90,13 @@ void MainWindow::SelectTab(uint32_t index) {
         auto background=Brush(selected?L"TekPrimaryContainerBrush":L"TekSurfaceBrush");
         auto foreground=Brush(selected?L"TekOnPrimaryContainerBrush":L"TekMutedBrush");
         tabs_[i].Background(background); tabs_[i].Foreground(foreground);
+        // The content owns its selected colors so native pointer states cannot hide selection.
+        auto pill=tabs_[i].Content().as<Border>(); pill.Background(background);
+        auto label=pill.Child().as<StackPanel>();
+        for(auto const& child:label.Children()) {
+            if(auto icon=child.try_as<FontIcon>())icon.Foreground(foreground);
+            if(auto caption=child.try_as<TextBlock>())caption.Foreground(foreground);
+        }
         for(auto key:{L"ButtonBackgroundPointerOver",L"ButtonBackgroundPressed"})tabs_[i].Resources().Insert(box_value(key),background);
         for(auto key:{L"ButtonForegroundPointerOver",L"ButtonForegroundPressed"})tabs_[i].Resources().Insert(box_value(key),foreground);
     }
