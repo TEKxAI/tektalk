@@ -14,7 +14,8 @@ def tap(id):control(id).click_input();time.sleep(.9)
 def fill(id,text):
     e=control(id);e.click_input();send_keys('^a{BACKSPACE}');send_keys(text.replace('+','{+}').replace('(','{(}').replace(')','{)}'),with_spaces=True,pause=.06);time.sleep(.5)
 def visible(text):
-    window.child_window(title=text,control_type='Text').wait('visible',timeout=30)
+    # A sidebar preview can contain the same text; prove it is in the chat pane.
+    window.child_window(auto_id='chat.messages').child_window(title=text,control_type='Text').wait('visible',timeout=30)
 Path('recordings').mkdir(exist_ok=True)
 record=subprocess.Popen(['ffmpeg','-y','-f','gdigrab','-framerate','15','-draw_mouse','1','-i','desktop','-c:v','libx264','-preset','ultrafast','-crf','24','-pix_fmt','yuv420p','recordings/windows.mp4'],stdin=subprocess.PIPE,stdout=open('recordings/windows-recorder.log','wb'),stderr=subprocess.STDOUT)
 complete=False
