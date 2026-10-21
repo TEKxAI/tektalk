@@ -24,14 +24,14 @@ void MainWindow::ShowHost() {
     sidebar.RowDefinitions().Append(body); sidebar.RowDefinitions().Append(bottom);
     sidebarContent_=StackPanel(); sidebarContent_.Padding({16,24,16,16}); sidebarContent_.Spacing(16);
     auto scroll=ScrollViewer(); scroll.Content(sidebarContent_); sidebar.Children().Append(scroll);
-    auto tabRow=Grid(); tabRow.Padding({8}); tabRow.BorderThickness({0,1,0,0}); tabRow.BorderBrush(Brush(L"TekOutlineBrush"));
+    auto tabRow=Grid(); tabRow.Padding({8,8,8,8}); tabRow.BorderThickness({0,1,0,0}); tabRow.BorderBrush(Brush(L"TekOutlineBrush"));
     Aid(tabRow,L"navigation.bottom");
     const std::tuple<hstring,hstring,hstring> entries[]={{Tr(L"Message"),L"\uE8F2",L"tab.Message"},{L"AI",L"\uE945",L"tab.AI"},{Tr(L"Me"),L"\uE77B",L"tab.Me"}};
     uint32_t index=0;
     for(auto const& entry:entries) {
         tabRow.ColumnDefinitions().Append(ColumnDefinition());
         Button button; button.HorizontalAlignment(HorizontalAlignment::Stretch);
-        button.MinHeight(tektalk::design::TouchTarget); button.Padding({2,8,2,8}); button.BorderThickness({0}); button.CornerRadius({12});
+        button.MinHeight(tektalk::design::TouchTarget); button.Padding({2,8,2,8}); button.BorderThickness({0}); button.CornerRadius({12,12,12,12});
         Aid(button,std::get<2>(entry).c_str());
         auto label=StackPanel(); label.Spacing(4); label.HorizontalAlignment(HorizontalAlignment::Center);
         auto icon=FontIcon(); icon.Glyph(std::get<1>(entry)); label.Children().Append(icon);
@@ -48,7 +48,7 @@ Media::Brush MainWindow::Brush(wchar_t const* key) { return Application::Current
 void MainWindow::Primary(Button const& button) {
     button.Style(Application::Current().Resources().Lookup(box_value(L"AccentButtonStyle")).as<Style>());
     button.Background(Brush(L"TekPrimaryBrush")); button.Foreground(Brush(L"TekOnPrimaryBrush"));
-    button.MinHeight(tektalk::design::TouchTarget); button.CornerRadius({12});
+    button.MinHeight(tektalk::design::TouchTarget); button.CornerRadius({12,12,12,12});
 }
 void MainWindow::ShowSidebar(uint32_t index) {
     sidebarContent_.Children().Clear(); sidebarContent_.Children().Append(Text(L"TEKtalk",24,true));
@@ -57,7 +57,7 @@ void MainWindow::ShowSidebar(uint32_t index) {
         if(recent_.empty()) { auto hint=Text(Tr(L"MessageStartHint")); hint.TextWrapping(TextWrapping::Wrap); hint.Foreground(Brush(L"TekMutedBrush")); sidebarContent_.Children().Append(hint); }
         for(auto const& entry:recent_) {
             Button row; row.HorizontalAlignment(HorizontalAlignment::Stretch); row.HorizontalContentAlignment(HorizontalAlignment::Stretch);
-            row.Padding({12}); row.CornerRadius({12}); row.BorderThickness({0}); row.Background(Brush(L"TekPrimaryContainerBrush"));
+            row.Padding({12,12,12,12}); row.CornerRadius({12,12,12,12}); row.BorderThickness({0}); row.Background(Brush(L"TekPrimaryContainerBrush"));
             Aid(row,(L"history."+entry.id).c_str());
             auto label=StackPanel(); label.Spacing(4); label.Children().Append(Text(Tr(L"DirectConversation"),14,true));
             auto preview=Text(entry.preview.empty()?entry.id:entry.preview,12); preview.Foreground(Brush(L"TekMutedBrush")); preview.TextWrapping(TextWrapping::Wrap); label.Children().Append(preview);
@@ -91,8 +91,8 @@ void MainWindow::ShowMessage() {
     setup.Children().Append(conversation_); setup.Children().Append(recipient_);
     auto sync=Button(); Aid(sync,L"chat.sync"); sync.Content(box_value(Tr(L"SyncHistory"))); sync.Click([this](auto&&,auto&&){LoadMessages();}); setup.Children().Append(sync); messageContent_.Children().Append(setup);
     status_=Text(Tr(L"MessageStartHint"),12); status_.Foreground(Brush(L"TekMutedBrush")); status_.Margin({24,0,24,8}); Grid::SetRow(status_,2); messageContent_.Children().Append(status_);
-    messages_=ListView(); messages_.Margin({16,0,16,0}); messages_.SelectionMode(ListViewSelectionMode::None); Grid::SetRow(messages_,3); messageContent_.Children().Append(messages_);
-    auto composer=Grid(); composer.Padding({16}); composer.Background(Brush(L"TekSurfaceBrush"));
+    messages_=ListView(); messages_.Margin({16,0,16,0}); messages_.SelectionMode(ListViewSelectionMode::None); Aid(messages_,L"chat.messages"); Grid::SetRow(messages_,3); messageContent_.Children().Append(messages_);
+    auto composer=Grid(); composer.Padding({16,16,16,16}); composer.Background(Brush(L"TekSurfaceBrush"));
     composer.ColumnDefinitions().Append(ColumnDefinition()); ColumnDefinition sendColumn; sendColumn.Width(GridLengthHelper::Auto()); composer.ColumnDefinitions().Append(sendColumn);
     draft_=TextBox(); Aid(draft_,L"chat.draft"); draft_.PlaceholderText(Tr(L"ComposeMessage")); draft_.VerticalAlignment(VerticalAlignment::Center); composer.Children().Append(draft_);
     auto send=Button(); Aid(send,L"chat.send"); send.Content(box_value(Tr(L"Send"))); Primary(send); send.Margin({8,0,0,0}); Grid::SetColumn(send,1);
@@ -100,7 +100,7 @@ void MainWindow::ShowMessage() {
     content_.Children().Append(messageContent_);
 }
 void MainWindow::AppendMessage(hstring const& body,bool mine) {
-    auto bubble=Border(); bubble.Padding({12}); bubble.Margin({0,4,0,4}); bubble.CornerRadius({18});
+    auto bubble=Border(); bubble.Padding({12,12,12,12}); bubble.Margin({0,4,0,4}); bubble.CornerRadius({18,18,18,18});
     bubble.Background(Brush(mine?L"TekPrimaryBrush":L"TekSurfaceBrush"));
     auto label=Text(body); label.TextWrapping(TextWrapping::Wrap); label.Foreground(Brush(mine?L"TekOnPrimaryBrush":L"TekTextBrush")); bubble.Child(label);
     messages_.Items().Append(bubble); messages_.ScrollIntoView(bubble);

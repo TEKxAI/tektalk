@@ -86,6 +86,7 @@ async function sendMessage(event){
   const button=$('#messageForm .send');button.disabled=true;
   try{
     const result=await request('/v1/chat/messages/send',{method:'POST',body:JSON.stringify({conversation_id:conversation,recipient_id:recipient,client_message_id:crypto.randomUUID(),text})});
+    if(!state.tokens || conversation!==localStorage.getItem('tektalk.conversation'))return;
     appendMessage(result.message.body,'outgoing',new Date(result.message.created_at));input.value='';
     rememberConversation(result.message.body);
   }catch(e){toast(e.message)}finally{button.disabled=false}

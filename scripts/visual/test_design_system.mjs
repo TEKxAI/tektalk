@@ -16,6 +16,8 @@ try {
       }, { locale, theme });
       await page.goto(baseURL);
       await page.waitForFunction(expected => document.documentElement.dataset.theme === expected, theme);
+      await fs.mkdir('recordings/design-system', { recursive: true });
+      await page.screenshot({ path: `recordings/design-system/web-${locale}-${theme}-initial.png` });
       const tabs = page.locator('.rail .nav-item');
       assert.deepEqual(await tabs.evaluateAll(items => items.map(item => item.dataset.tab)), ['messages', 'ai', 'me']);
       assert.deepEqual((await tabs.allTextContents()).map(text => text.replace(/\d/g, '').trim()), locale === 'en' ? ['Messages', 'AI', 'Me'] : ['Tin nhắn', 'AI', 'Cá nhân']);
@@ -24,7 +26,8 @@ try {
       const sidebar = await page.locator('.sidebar').boundingBox();
       const history = await page.locator('.conversation-list').boundingBox();
       assert.ok(desktop && workspace && sidebar && history);
-      assert.ok(Math.abs(desktop.x - sidebar.x) < 1 && Math.abs(desktop.width - sidebar.width) < 1, 'Tabs must fill the left pane');
+      // The sidebar includes its 1px border; the navigation uses the content box.
+      assert.ok(Math.abs(desktop.x - sidebar.x) <= 1 && Math.abs(desktop.width - sidebar.width) <= 1, 'Tabs must fill the left pane');
       assert.ok(Math.abs(desktop.y + desktop.height - sidebar.y - sidebar.height) < 1, 'Tabs must be pinned to the bottom of the left pane');
       assert.ok(history.y + history.height <= desktop.y, 'History must be above Message tabs');
       assert.ok(Math.abs(sidebar.x + sidebar.width - workspace.x) < 1, 'Web must have exactly two adjacent panes');

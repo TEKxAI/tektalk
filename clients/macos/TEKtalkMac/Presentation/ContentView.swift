@@ -72,7 +72,7 @@ private struct HostView: View {
                         case .me: Text(tokens.user_id.uuidString).font(.caption).foregroundStyle(TekDesign.muted).textSelection(.enabled)
                         }
                     }.padding(.horizontal, TekDesign.Spacing.lg).padding(.bottom, TekDesign.Spacing.lg)
-                }.frame(maxHeight: .infinity).accessibilityIdentifier("sidebar.content")
+                }.frame(maxWidth: .infinity, maxHeight: .infinity).accessibilityIdentifier("sidebar.content")
                 Divider()
                 HStack(spacing: TekDesign.Spacing.xs) {
                     ForEach(Destination.allCases) { item in
@@ -92,7 +92,7 @@ private struct HostView: View {
                         .accessibilityIdentifier("tab.\(item.rawValue.lowercased())")
                         .accessibilityAddTraits(selection == item ? .isSelected : [])
                     }
-                }.padding(TekDesign.Spacing.sm).accessibilityIdentifier("navigation.bottom")
+                }.padding(TekDesign.Spacing.sm).accessibilityElement(children: .contain).accessibilityIdentifier("navigation.bottom")
             }
             .frame(width: TekDesign.Layout.sidebar)
             .background(TekDesign.surface)
