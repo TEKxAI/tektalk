@@ -13,6 +13,7 @@
 "auth.answer" = "Câu trả lời";
 "auth.security_answer" = "Câu trả lời bảo mật";
 "message.sync" = "Đồng bộ";
+"message.direct_conversation" = "Cuộc trò chuyện";
 "message.compose" = "Tin nhắn";
 "message.send" = "Gửi";
 "ai.plugin_description" = "Plugin AI đã ký sẵn sàng để phân phối.";

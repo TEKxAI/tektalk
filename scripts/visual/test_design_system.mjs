@@ -16,20 +16,37 @@ try {
       }, { locale, theme });
       await page.goto(baseURL);
       await page.waitForFunction(expected => document.documentElement.dataset.theme === expected, theme);
+      await fs.mkdir('recordings/design-system', { recursive: true });
+      await page.screenshot({ path: `recordings/design-system/web-${locale}-${theme}-initial.png` });
       const tabs = page.locator('.rail .nav-item');
       assert.deepEqual(await tabs.evaluateAll(items => items.map(item => item.dataset.tab)), ['messages', 'ai', 'me']);
       assert.deepEqual((await tabs.allTextContents()).map(text => text.replace(/\d/g, '').trim()), locale === 'en' ? ['Messages', 'AI', 'Me'] : ['Tin nhắn', 'AI', 'Cá nhân']);
       const desktop = await page.locator('.rail').boundingBox();
       const workspace = await page.locator('#messages').boundingBox();
-      assert.ok(desktop && workspace && desktop.x + desktop.width <= workspace.x + 1, 'Desktop navigation must be left of content');
+      const sidebar = await page.locator('.sidebar').boundingBox();
+      const history = await page.locator('.conversation-list').boundingBox();
+      assert.ok(desktop && workspace && sidebar && history);
+      // The sidebar includes its 1px border; the navigation uses the content box.
+      assert.ok(Math.abs(desktop.x - sidebar.x) <= 1 && Math.abs(desktop.width - sidebar.width) <= 1, 'Tabs must fill the left pane');
+      assert.ok(Math.abs(desktop.y + desktop.height - sidebar.y - sidebar.height) < 1, 'Tabs must be pinned to the bottom of the left pane');
+      assert.ok(history.y + history.height <= desktop.y, 'History must be above Message tabs');
+      assert.ok(Math.abs(sidebar.x + sidebar.width - workspace.x) < 1, 'Web must have exactly two adjacent panes');
+      assert.equal(await page.locator('#messages .conversation-list').count(), 0, 'History must not create a third pane');
       const desktopTabBoxes = await tabs.evaluateAll(items => items.map(item => item.getBoundingClientRect()).map(({ x, y, width, height }) => ({ x, y, width, height })));
       assert.ok(desktopTabBoxes.every(box => Math.abs(box.y - desktopTabBoxes[0].y) < 1), 'Desktop tabs must share one horizontal row');
       assert.ok(desktopTabBoxes.every((box, index) => index === 0 || box.x > desktopTabBoxes[index - 1].x), 'Desktop tabs must run left to right');
+      await page.locator('#messageInput').fill('Unsent draft');
       for (const [index, name] of ['messages', 'ai', 'me'].entries()) {
         await tabs.nth(index).click();
         assert.equal(await tabs.nth(index).getAttribute('aria-current'), 'page');
         assert.equal(await page.locator(`#${name}`).isVisible(), true);
+        assert.equal(await page.locator(`[data-sidebar="${name}"]`).isVisible(), true);
+        assert.equal(await page.locator('.sidebar-page.active').count(), 1);
+        if (name !== 'messages') assert.equal(await page.locator('.conversation-list').isVisible(), false);
       }
+      await tabs.nth(0).click();
+      assert.equal(await page.locator('#messageInput').inputValue(), 'Unsent draft', 'Switching tabs must preserve drafts');
+      await page.locator('#messageInput').fill('');
       await page.setViewportSize({ width: 390, height: 844 });
       await tabs.nth(0).click();
       const mobile = await page.locator('.rail').boundingBox();
@@ -50,7 +67,7 @@ try {
       await page.emulateMedia({ colorScheme: theme === 'light' ? 'dark' : 'light' });
       await page.waitForFunction(expected => document.documentElement.dataset.theme === expected, theme === 'light' ? 'dark' : 'light');
       await context.close();
-      console.log(`${locale}/${theme}: desktop sidebar, mobile tabs, navigation, palette and system appearance passed`);
+      console.log(`${locale}/${theme}: two panes, pinned bottom tabs, history, draft preservation and appearance passed`);
     }
   }
 } finally {

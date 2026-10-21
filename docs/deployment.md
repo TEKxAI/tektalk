@@ -2,6 +2,13 @@
 
 The repository supports two deployment paths: Docker Compose for a single learning host and Kubernetes for a reusable environment template. It does not provision managed PostgreSQL, Redis, ScyllaDB, Kafka, DNS, TLS certificates, or a cloud load balancer.
 
+PostgreSQL TLS uses Rustls with the operating system certificate store
+(`tls-rustls-ring-native-roots`). Keep host/container CA packages current and
+install any private database CA in that store; the Docker runtime includes
+`ca-certificates`. This removes the SQLx bundled `webpki-roots 0.26` dependency
+affected by [RUSTSEC-2026-0381](https://rustsec.org/advisories/RUSTSEC-2026-0381).
+Production database URLs should use `sslmode=verify-full`.
+
 ## Release flow
 
 Every push and pull request runs the layout/legacy guard, Rust Clippy and tests, Android debug build, and Docker image build. A Git tag matching `v*` runs `.github/workflows/release.yml` and publishes the server image to:

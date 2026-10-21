@@ -22,11 +22,17 @@ try{
   await type('[name="challenge_answer"]',f.answer);const verified=await submit('/v1/auth/device/verify');assert.equal(verified.user_id,registered.user_id);await page.locator('#authDialog').waitFor({state:'hidden'});await pause();
   await page.locator('#configureChat').click();await type('#conversationId',f.conversation);await type('#recipientId',f.peer_id);await page.locator('#openConversation').click();await page.locator('#chatDialog').waitFor({state:'hidden'});await pause();
   await type('#messageInput',f.outgoing);await pause();
-  const sentResponse=page.waitForResponse(r=>r.url().endsWith('/v1/chat/messages/send')&&r.request().method()==='POST');await page.locator('#messageForm .send').click();const sent=await sentResponse;assert.ok(sent.ok(),await sent.text());await page.getByText(f.outgoing,{exact:true}).waitFor();await pause();
+  const sentResponse=page.waitForResponse(r=>r.url().endsWith('/v1/chat/messages/send')&&r.request().method()==='POST');await page.locator('#messageForm .send').click();const sent=await sentResponse;assert.ok(sent.ok(),await sent.text());await page.locator('.message').getByText(f.outgoing,{exact:true}).waitFor();await pause();
   const history=await api.post('/v1/chat/messages/history',{headers:{authorization:`Bearer ${f.peer_token}`},data:{conversation_id:f.conversation,limit:50}});assert.ok(history.ok());const rows=await history.json();const outgoing=rows.find(x=>x.body===f.outgoing);assert.ok(outgoing,'Message must exist in recipient history');
   const reply=await api.post('/v1/chat/messages/send',{headers:{authorization:`Bearer ${f.peer_token}`},data:{conversation_id:f.conversation,recipient_id:outgoing.sender_id,client_message_id:crypto.randomUUID(),text:f.incoming}});assert.ok(reply.ok());
-  await page.locator('#syncHistory').click();await page.getByText(f.incoming,{exact:true}).waitFor();await pause();
-  await page.reload();await page.locator('#syncHistory').click();await page.getByText(f.outgoing,{exact:true}).waitFor();await page.getByText(f.incoming,{exact:true}).waitFor();await pause();
+  await page.locator('#syncHistory').click();await page.locator('.message').getByText(f.incoming,{exact:true}).waitFor();await pause();
+  await type('#messageInput','Draft preserved across tabs');
+  for(const tab of ['ai','me','messages']){await page.locator(`[data-tab="${tab}"]`).click();await pause();}
+  assert.equal(await page.locator('#messageInput').inputValue(),'Draft preserved across tabs');
+  await page.locator('.message').getByText(f.incoming,{exact:true}).waitFor();
+  const nav=await page.locator('.rail').boundingBox(), sidebar=await page.locator('.sidebar').boundingBox();
+  assert.ok(nav && sidebar && Math.abs(nav.y+nav.height-sidebar.y-sidebar.height)<1);
+  await page.reload();await page.locator('#syncHistory').click();await page.locator('.message').getByText(f.outgoing,{exact:true}).waitFor();await page.locator('.message').getByText(f.incoming,{exact:true}).waitFor();await pause();
   await fs.writeFile('recordings/web-backend.json',JSON.stringify({platform:'web',registration:true,logout:true,login:true,device_verification:true,outgoing_persisted:true,reply_visible_after_reload:true},null,2));complete=true;
 }finally{
   await context.close();await video.saveAs('recordings/web.webm');await api.dispose();await browser.close();

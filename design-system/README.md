@@ -24,9 +24,11 @@ platform conventions. Do not introduce a custom font that defeats text scaling.
 
 The spacing scale is 4 / 8 / 12 / 16 / 24 / 32 / 48 logical units. Control,
 bubble and card radii are 12 / 18 / 24. Navigation targets are at least 48 units;
-desktop sidebar width is 224. Desktop hosts place the same three Mobile tabs
-in one horizontal row at the top of the left panel, with destination content
-in the right panel. Native controls may apply their platform's own metrics
+desktop sidebar width is 320. Desktop hosts use exactly two panes. The left
+pane shows chat history for Message, or the corresponding AI / Me section.
+The three Mobile tabs are pinned in one horizontal row at the bottom of that
+pane; selected conversation / destination details fill the right pane.
+Changing tabs preserves chat history and unsent drafts. Native controls may apply their platform's own metrics
 where necessary for accessibility.
 
 ## Platform adapters
@@ -34,15 +36,18 @@ where necessary for accessibility.
 - iOS/macOS: generated named color assets supply light/dark variants; SwiftUI
   `TekDesign` exposes the colors and dimensions. System appearance updates
   automatically. Compact iPhone uses bottom tabs; regular iPad and macOS use
-  a left panel with a horizontal tab row and right content with the same three
-  destinations.
+  a left panel. macOS pins its horizontal tab row below the destination sidebar
+  content. Primary buttons explicitly use the same primary/onPrimary pair as
+  Android, rather than the OS default button foreground.
 - Android: generated light/dark Material 3 schemes and tab vector assets.
   Compact windows use bottom navigation; widths of 820 dp or more use a rail.
-- Windows: generated WinUI theme resources and a left panel with a native
-  horizontal tab row. The content appears on the right.
+- Windows: generated WinUI theme resources and a left panel with chat history
+  above a pinned bottom tab row. The content appears on the right and survives
+  tab switches.
 - Web: generated CSS custom properties; native system font stack, keyboard
   focus, reduced motion and safe-area handling. A left panel appears above
-  820 CSS pixels; compact layouts use bottom tabs. Theme cycles system / light /
+  820 CSS pixels, with history and bottom tabs in that same pane (no third rail);
+  compact layouts use full-width bottom tabs. Theme cycles system / light /
   dark and follows system appearance changes while system mode is selected.
 
 ## Verification

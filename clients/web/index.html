@@ -21,16 +21,12 @@
     </header>
 
     <main class="workspace">
-      <nav class="rail" aria-label="Main navigation">
-        <button class="nav-item active" data-tab="messages"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4,3 L20,3 Q22,3 22,5 L22,15 Q22,17 20,17 L8,17 L3,21 L3,17 Q2,17 2,15 L2,5 Q2,3 4,3 Z" /></svg><span data-i18n="messages">Tin nhắn</span><b>3</b></button>
-        <button class="nav-item" data-tab="ai"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12,1 L15,9 L23,12 L15,15 L12,23 L9,15 L1,12 L9,9 Z" /></svg><span>AI</span></button>
-        <button class="nav-item" data-tab="me"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12,2 A5,5 0,1 1,12 12 A5,5 0,1 1,12 2 M2,22 Q2,14 12,14 Q22,14 22,22 Z" /></svg><span data-i18n="me">Cá nhân</span></button>
-      </nav>
-
-      <section id="messages" class="tab-panel active">
-        <aside class="conversation-list">
+      <aside class="sidebar">
+        <div class="sidebar-content">
+        <section class="sidebar-page active" data-sidebar="messages">
           <div class="section-heading"><div><small data-i18n="inbox">HỘP THƯ</small><h1 data-i18n="messages">Tin nhắn</h1></div><button class="compose" type="button" aria-label="New message">＋</button></div>
           <label class="search"><span>⌕</span><input type="search" data-i18n-placeholder="search" placeholder="Tìm kiếm"></label>
+          <div class="conversation-list">
           <button class="conversation active" data-conversation="demo">
             <span class="avatar gradient">AI</span><span class="conversation-copy"><strong>TEK Assistant</strong><span data-i18n="welcomeShort">Chào mừng bạn đến TEKtalk</span></span><time>09:42</time>
           </button>
@@ -39,8 +35,19 @@
           </button>
           <button class="conversation" data-conversation="design">
             <span class="avatar mint">UX</span><span class="conversation-copy"><strong>Design Circle</strong><span data-i18n="designMessage">Đã gửi một ảnh</span></span><time data-i18n="yesterday">Hôm qua</time></button>
-        </aside>
+          </div>
+        </section>
+        <section class="sidebar-page" data-sidebar="ai"><div class="section-heading"><div><small>TEKtalk</small><h1>AI</h1></div></div><p class="sidebar-description" data-i18n="aiBody">Trợ lý cho mọi cuộc trò chuyện</p></section>
+        <section class="sidebar-page" data-sidebar="me"><div class="section-heading"><div><small>TEKtalk</small><h1 data-i18n="me">Cá nhân</h1></div></div><p class="sidebar-description" data-i18n="privacyHint">Session và thiết bị</p></section>
+        </div>
+        <nav class="rail" aria-label="Main navigation">
+        <button class="nav-item active" data-tab="messages"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4,3 L20,3 Q22,3 22,5 L22,15 Q22,17 20,17 L8,17 L3,21 L3,17 Q2,17 2,15 L2,5 Q2,3 4,3 Z" /></svg><span data-i18n="messages">Tin nhắn</span><b>3</b></button>
+        <button class="nav-item" data-tab="ai"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12,1 L15,9 L23,12 L15,15 L12,23 L9,15 L1,12 L9,9 Z" /></svg><span>AI</span></button>
+        <button class="nav-item" data-tab="me"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12,2 A5,5 0,1 1,12 12 A5,5 0,1 1,12 2 M2,22 Q2,14 12,14 Q22,14 22,22 Z" /></svg><span data-i18n="me">Cá nhân</span></button>
+      </nav>
+      </aside>
 
+      <section id="messages" class="tab-panel active">
         <article class="chat-panel">
           <header class="chat-header"><span class="avatar gradient">AI</span><div><strong>TEK Assistant</strong><span data-i18n="online">Đang hoạt động</span></div><button class="icon-button" type="button" aria-label="Audio call">⌕</button><button class="icon-button" type="button" aria-label="Video call">▻</button></header>
           <div id="chatControls" hidden><button id="configureChat" type="button" data-i18n="configureChat">Open conversation</button><button id="syncHistory" type="button" data-i18n="syncHistory">Sync messages</button></div>

@@ -38,4 +38,7 @@
   <data name="SignOut" xml:space="preserve"><value>Đăng xuất</value></data>
   <data name="RustCoreConnectedLabel" xml:space="preserve"><value>Rust Core: Đã kết nối</value></data>
   <data name="RustCoreFallbackLabel" xml:space="preserve"><value>Rust Core: Dự phòng</value></data>
+  <data name="DirectConversation" xml:space="preserve"><value>Cuộc trò chuyện</value></data>
+  <data name="ConversationUuid" xml:space="preserve"><value>UUID cuộc trò chuyện</value></data>
+  <data name="RecipientUuid" xml:space="preserve"><value>UUID người nhận</value></data>
 </root>
