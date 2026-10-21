@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "MainWindow.xaml.h"
+#include <winrt/Microsoft.UI.Xaml.Interop.h>
 #include "Domain/ClientLogic.h"
 #include "DesignMetrics.h"
 #include <algorithm>
