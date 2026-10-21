@@ -16,7 +16,9 @@ def fill(id,text):
 def visible(text,in_chat=True):
     # A sidebar preview can contain the same text; prove it is in the chat pane.
     scope=window.child_window(auto_id='chat.messages') if in_chat else window
-    scope.child_window(title=text,control_type='Text').wait('visible',timeout=30)
+    element=scope.child_window(title=text,control_type='Text')
+    element.wait('visible',timeout=30)
+    return element.wrapper_object()
 Path('recordings').mkdir(exist_ok=True)
 record=subprocess.Popen(['ffmpeg','-y','-f','gdigrab','-framerate','15','-draw_mouse','1','-i','desktop','-c:v','libx264','-preset','ultrafast','-crf','24','-pix_fmt','yuv420p','recordings/windows.mp4'],stdin=subprocess.PIPE,stdout=open('recordings/windows-recorder.log','wb'),stderr=subprocess.STDOUT)
 complete=False
@@ -33,7 +35,8 @@ try:
     fill('auth.phone',f['phone']);fill('auth.password',f['password']);tap('auth.submit');control('auth.answer');time.sleep(2)
     fill('auth.answer',f['answer']);tap('auth.submit');control('chat.conversation')
     fill('chat.conversation',f['conversation']);fill('chat.recipient',f['peer_id']);fill('chat.draft',f['outgoing']);time.sleep(1.5);tap('chat.send');visible(f['outgoing']);time.sleep(2)
-    verify_reply(f);tap('chat.sync');visible(f['incoming'])
+    verify_reply(f);tap('chat.sync');incoming=visible(f['incoming']);outgoing=visible(f['outgoing'])
+    assert outgoing.rectangle().left>incoming.rectangle().left, 'Outgoing messages must align right, incoming left'
     fill('chat.draft','Draft preserved across tabs');tap('tab.AI');tap('tab.Me');tap('tab.Message')
     assert control('chat.draft').get_value()=='Draft preserved across tabs'
     visible(f['incoming']);control('history.'+f['conversation']);time.sleep(3);complete=True

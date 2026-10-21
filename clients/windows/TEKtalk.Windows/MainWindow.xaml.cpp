@@ -48,6 +48,8 @@ Media::Brush MainWindow::Brush(wchar_t const* key) { return Application::Current
 void MainWindow::Primary(Button const& button) {
     button.Style(Application::Current().Resources().Lookup(box_value(L"AccentButtonStyle")).as<Style>());
     button.Background(Brush(L"TekPrimaryBrush")); button.Foreground(Brush(L"TekOnPrimaryBrush"));
+    for(auto key:{L"ButtonBackgroundPointerOver",L"ButtonBackgroundPressed"})button.Resources().Insert(box_value(key),Brush(L"TekPrimaryBrush"));
+    for(auto key:{L"ButtonForegroundPointerOver",L"ButtonForegroundPressed"})button.Resources().Insert(box_value(key),Brush(L"TekOnPrimaryBrush"));
     button.MinHeight(tektalk::design::TouchTarget); button.CornerRadius({12,12,12,12});
 }
 void MainWindow::ShowSidebar(uint32_t index) {
@@ -78,7 +80,17 @@ void MainWindow::RememberConversation(hstring const& preview) {
     recent_.erase(std::remove_if(recent_.begin(),recent_.end(),[&](auto const& item){return item.id==id;}),recent_.end());
     recent_.insert(recent_.begin(),RecentChat{id,recipient_.Text(),preview}); ShowSidebar(activeTab_);
 }
-void MainWindow::SelectTab(uint32_t index){activeTab_=index;auto resources=Application::Current().Resources();for(uint32_t i=0;i<tabs_.size();++i){auto selected=i==index;tabs_[i].Background(resources.Lookup(box_value(selected?L"TekPrimaryContainerBrush":L"TekSurfaceBrush")).as<Media::Brush>());tabs_[i].Foreground(resources.Lookup(box_value(selected?L"TekOnPrimaryContainerBrush":L"TekMutedBrush")).as<Media::Brush>());}}
+void MainWindow::SelectTab(uint32_t index) {
+    activeTab_=index;
+    for(uint32_t i=0;i<tabs_.size();++i) {
+        auto selected=i==index;
+        auto background=Brush(selected?L"TekPrimaryContainerBrush":L"TekSurfaceBrush");
+        auto foreground=Brush(selected?L"TekOnPrimaryContainerBrush":L"TekMutedBrush");
+        tabs_[i].Background(background); tabs_[i].Foreground(foreground);
+        for(auto key:{L"ButtonBackgroundPointerOver",L"ButtonBackgroundPressed"})tabs_[i].Resources().Insert(box_value(key),background);
+        for(auto key:{L"ButtonForegroundPointerOver",L"ButtonForegroundPressed"})tabs_[i].Resources().Insert(box_value(key),foreground);
+    }
+}
 void MainWindow::ShowMessage() {
     SelectTab(0); ShowSidebar(0); content_.Children().Clear();
     if(messageContent_) { content_.Children().Append(messageContent_); return; }
@@ -91,7 +103,11 @@ void MainWindow::ShowMessage() {
     setup.Children().Append(conversation_); setup.Children().Append(recipient_);
     auto sync=Button(); Aid(sync,L"chat.sync"); sync.Content(box_value(Tr(L"SyncHistory"))); sync.Click([this](auto&&,auto&&){LoadMessages();}); setup.Children().Append(sync); messageContent_.Children().Append(setup);
     status_=Text(Tr(L"MessageStartHint"),12); status_.Foreground(Brush(L"TekMutedBrush")); status_.Margin({24,0,24,8}); Grid::SetRow(status_,2); messageContent_.Children().Append(status_);
-    messages_=ListView(); messages_.Margin({16,0,16,0}); messages_.SelectionMode(ListViewSelectionMode::None); Aid(messages_,L"chat.messages"); Grid::SetRow(messages_,3); messageContent_.Children().Append(messages_);
+    messages_=ListView(); messages_.Margin({16,0,16,0}); messages_.SelectionMode(ListViewSelectionMode::None); Aid(messages_,L"chat.messages");
+    Style messageStyle{xaml_typename<ListViewItem>()};
+    Setter stretch; stretch.Property(Control::HorizontalContentAlignmentProperty()); stretch.Value(box_value(HorizontalAlignment::Stretch)); messageStyle.Setters().Append(stretch);
+    messages_.ItemContainerStyle(messageStyle);
+    Grid::SetRow(messages_,3); messageContent_.Children().Append(messages_);
     auto composer=Grid(); composer.Padding({16,16,16,16}); composer.Background(Brush(L"TekSurfaceBrush"));
     composer.ColumnDefinitions().Append(ColumnDefinition()); ColumnDefinition sendColumn; sendColumn.Width(GridLengthHelper::Auto()); composer.ColumnDefinitions().Append(sendColumn);
     draft_=TextBox(); Aid(draft_,L"chat.draft"); draft_.PlaceholderText(Tr(L"ComposeMessage")); draft_.VerticalAlignment(VerticalAlignment::Center); composer.Children().Append(draft_);
@@ -101,6 +117,7 @@ void MainWindow::ShowMessage() {
 }
 void MainWindow::AppendMessage(hstring const& body,bool mine) {
     auto bubble=Border(); bubble.Padding({12,12,12,12}); bubble.Margin({0,4,0,4}); bubble.CornerRadius({18,18,18,18});
+    bubble.MaxWidth(520); bubble.HorizontalAlignment(mine?HorizontalAlignment::Right:HorizontalAlignment::Left);
     bubble.Background(Brush(mine?L"TekPrimaryBrush":L"TekSurfaceBrush"));
     auto label=Text(body); label.TextWrapping(TextWrapping::Wrap); label.Foreground(Brush(mine?L"TekOnPrimaryBrush":L"TekTextBrush")); bubble.Child(label);
     messages_.Items().Append(bubble); messages_.ScrollIntoView(bubble);
