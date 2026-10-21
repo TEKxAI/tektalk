@@ -23,8 +23,11 @@ try:
     time.sleep(2);tap('auth.toggle')
     for id,value in [('auth.phone',f['phone']),('auth.name','MVP Learner'),('auth.password',f['password']),('auth.question',f['question']),('auth.answer',f['answer'])]:fill(id,value)
     time.sleep(1.5);tap('auth.submit')
-    tabs=control('navigation.bottom').rectangle()
-    assert tabs.top>window.rectangle().top+window.rectangle().height()/2, 'Desktop tabs must be at the bottom'
+    # WinUI layout Grids do not expose an automation peer. Measure the actual
+    # accessible buttons instead of querying the decorative parent container.
+    tabs=[control(id).rectangle() for id in ('tab.Message','tab.AI','tab.Me')]
+    assert all(abs(tab.top-tabs[0].top)<=1 for tab in tabs), 'Tabs must share one row'
+    assert all(abs(tab.bottom-window.rectangle().bottom)<32 for tab in tabs), 'Tabs must be pinned to the bottom'
     tap('tab.AI');visible('TEK AI');tap('tab.Me');tap('auth.logout')
     fill('auth.phone',f['phone']);fill('auth.password',f['password']);tap('auth.submit');control('auth.answer');time.sleep(2)
     fill('auth.answer',f['answer']);tap('auth.submit');control('chat.conversation')
