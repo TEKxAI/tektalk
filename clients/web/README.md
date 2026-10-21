@@ -10,7 +10,9 @@ From the repository root:
 make local-up
 ```
 
-Open <http://localhost:8080/>. Register a new account to use the real local backend, or select **Explore demo mode** to inspect the interface without creating data.
+Open <http://localhost:8080/>. The initial screen is the standalone sign-in / registration view, with the same brand panel and form structure as Windows and macOS. The application stays hidden and inert until authentication (including new-device verification) succeeds. There is no demo bypass or preloaded chat data.
+
+After signing in, desktop uses a 320px history sidebar with Message / AI / Me pinned to its bottom and one detail pane. Chat has inline conversation fields, a scrollable message area and a full-width composer footer. AI shows the plugin placeholder; Me shows account/device details, appearance controls and sign-out. A cached session is verified with an authenticated backend read before the application appears. Failed verification or an authenticated HTTP 401 returns to sign-in. Sign-out clears account previews and drafts.
 
 ## Frontend-only development
 

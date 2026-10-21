@@ -1,20 +1,28 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import { chromium } from 'playwright';
+import { chromium, request } from 'playwright';
 
 const baseURL = process.env.TEKTALK_WEB_URL || 'http://127.0.0.1:8080';
+const api = await request.newContext({ baseURL });
+const registered = await api.post('/v1/auth/register', { data: {
+  phone: '+847' + String(Date.now()).slice(-8), password: 'DesignSystem1234',
+  display_name: 'Design System Test', security_question: 'Test city?', security_answer: 'hanoi', device_name: 'design-system-test',
+} });
+assert.ok(registered.ok(), await registered.text());
+const tokens = await registered.json();
 const browser = await chromium.launch({ headless: true });
 try {
   for (const locale of ['en', 'vi']) {
     for (const theme of ['light', 'dark']) {
       const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: theme });
       const page = await context.newPage();
-      await page.addInitScript(({ locale, theme }) => {
+      await page.addInitScript(({ locale, theme, tokens }) => {
         localStorage.setItem('tektalk.locale', locale);
         if (!localStorage.getItem('tektalk.theme')) localStorage.setItem('tektalk.theme', theme);
-        sessionStorage.setItem('tektalk.demo', '1');
-      }, { locale, theme });
+        sessionStorage.setItem('tektalk.tokens', JSON.stringify(tokens));
+      }, { locale, theme, tokens });
       await page.goto(baseURL);
+      await page.locator('#appShell').waitFor({ state: 'visible' });
       await page.waitForFunction(expected => document.documentElement.dataset.theme === expected, theme);
       await fs.mkdir('recordings/design-system', { recursive: true });
       await page.screenshot({ path: `recordings/design-system/web-${locale}-${theme}-initial.png` });
@@ -72,11 +80,11 @@ try {
   }
 } finally {
   await browser.close();
+  await api.dispose();
 }
 
 async function assertChatLayout(page, viewport) {
-  // The toolbar is hidden in demo mode and visible after login. Both layouts
-  // must reserve the remaining space for messages, never for the composer.
+  // Expanded and collapsed native chat controls must leave room for messages.
   for (const toolbarVisible of [false, true]) {
     await page.locator('#chatControls').evaluate((element, visible) => { element.hidden = !visible; }, toolbarVisible);
     const composer = await page.locator('.composer').boundingBox();
