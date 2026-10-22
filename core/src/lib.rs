@@ -6,6 +6,7 @@
 use std::ffi::CStr;
 
 pub mod id;
+pub mod adaptive_transport;
 pub mod mtproto;
 pub mod plugin;
 pub mod secret_chat;
