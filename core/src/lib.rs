@@ -8,6 +8,7 @@ use std::ffi::CStr;
 pub mod id;
 pub mod mtproto;
 pub mod plugin;
+pub mod secret_chat;
 pub mod storage;
 pub mod transport;
 
