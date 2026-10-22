@@ -2,7 +2,7 @@
 //!
 //! The server transports [`DeviceBundle`] and opaque ciphertext only. Content
 //! keys are established with a hybrid X25519 + ML-KEM-768 exchange and then
-//! used with XChaCha20-Poly1305. Hybrid is mandatory once enabled; there is no
+//! used with AES-256-GCM-SIV. Hybrid is mandatory once enabled; there is no
 //! classical-only downgrade path in this module.
 
 use aes_gcm_siv::{
@@ -139,7 +139,7 @@ pub fn create_session(
     conversation_id: &str,
 ) -> Result<(SessionEnvelope, SessionKey)> {
     policy.require_hybrid(&recipient.suites)?;
-    let recipient_pq = <MlKem768 as Kem>::EncapsulationKey::try_key_init(
+    let recipient_pq = <MlKem768 as Kem>::EncapsulationKey::new_from_slice(
         recipient.ml_kem_768_public.as_slice(),
     ).map_err(|_| Error::InvalidKey)?;
     let (pq_ciphertext, pq_secret) = recipient_pq.encapsulate();
