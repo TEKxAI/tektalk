@@ -20,14 +20,50 @@ logic must not know whether a frame travelled over TCP or WSS.
    configured deadline, connect to WSS on port 443.
 4. Preserve the MTProto authorization key and logical session across transport
    changes. Create a new transport connection, not a new user login.
-5. QUIC may be introduced later as an independently measured transport; it is
-   not in the initial automatic selection order.
+5. QUIC is negotiated independently for file/media transfer. It does not
+   replace the ordered TCP/WSS selection for MTProto chat/control messages.
 
 | Priority | Transport | Endpoint example | Role |
 |---:|---|---|---|
 | 1 | TCP + MTProto 2.0 | tcp://dc1.example:443 | native default |
 | 2 | WSS + MTProto 2.0 | wss://dc1.example/v1/realtime | firewall/proxy fallback |
+| media | QUIC Streams | quic://media-dc1.example:443 | encrypted file chunks |
+| realtime media | QUIC DATAGRAM | quic://media-dc1.example:443 | voice/video packets |
 | control | HTTPS | https://api.example/v1/realtime/bootstrap | auth and discovery |
+
+## TEKtalk Adaptive Transport
+
+Adaptive Transport is a data-plane extension, not a new cryptographic or chat
+protocol. MTProto 2.0 continues to own chat/control delivery and Secret Chat
+continues to own end-to-end keys.
+
+File and media transfer follows these rules:
+
+1. The sender creates a signed transfer manifest containing the file identity,
+   conversation, Secret Chat epoch, exact length, chunk geometry and SHA-256.
+2. Rust Core derives a file-specific key from the Secret Chat session key with
+   HKDF-SHA-256. Each chunk is independently protected with
+   AES-256-GCM-SIV; the manifest identity, index and total count are bound as
+   authenticated data.
+3. Platform QUIC adapters open a bounded number of reliable streams. Core
+   selects 1, 2, 4 or 8 streams from measured bandwidth, RTT and packet loss.
+4. The receiver persists only the completed-chunk bitmap. Reconnects request
+   missing indexes and never restart completed chunks.
+5. The receiver verifies the complete plaintext length and SHA-256 after
+   ordered reassembly.
+6. Voice/video adapters use QUIC DATAGRAM with a Core-provided bitrate, FEC and
+   retransmission-window profile. Late packets are dropped instead of blocking
+   newer media.
+
+The server sees ciphertext, chunk metadata and delivery state. One-time upload
+and download capabilities must be bound to account, device, conversation,
+file, expiry and operation. Delivered temporary chunks are removed after a
+short retry grace period.
+
+QUIC is enabled through a separately advertised capability and deterministic
+cohorts. If UDP/QUIC is unavailable, encrypted file chunks use the existing
+HTTPS upload path; calls retain the existing supported media path. A security
+or authentication failure is never treated as a transport fallback condition.
 
 ## Rust Core boundary
 
@@ -111,6 +147,11 @@ Measure connection success, handshake latency, fallback reason, reconnect
 rate, bytes per message, ACK latency, delivery latency and battery/network
 impact by platform and network type. Never log auth keys, decrypted payloads or
 realtime tickets.
+
+Adaptive Transport additionally measures useful goodput, per-chunk retry rate,
+resume success, time to first media, p50/p95 completion time, loss, jitter,
+stream count and energy per transferred MiB. Promotion requires an A/B result
+against the existing path; protocol overhead alone is not a speed claim.
 
 Roll out TCP through deterministic cohorts: internal, 1%, 5%, 25%, 50% and
 100%. Automatically return a cohort to WSS when TCP connection success,

@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package tektalk.v1;
+
+import "tektalk/v1/common.proto";
+
+service AdaptiveTransportService {
+  rpc NegotiateTransfer(NegotiateTransferRequest) returns (NegotiateTransferResponse);
+  rpc CommitChunks(CommitChunksRequest) returns (CommitChunksResponse);
+  rpc GetMissingChunks(GetMissingChunksRequest) returns (GetMissingChunksResponse);
+  rpc CompleteTransfer(CompleteTransferRequest) returns (CompleteTransferResponse);
+}
+
+message EncryptedTransferManifest {
+  string file_id = 1;
+  string conversation_id = 2;
+  uint64 epoch = 3;
+  uint64 content_length = 4;
+  uint32 chunk_size = 5;
+  uint32 chunk_count = 6;
+  bytes plaintext_sha256 = 7;
+}
+
+message NegotiateTransferRequest {
+  RequestContext context = 1;
+  EncryptedTransferManifest manifest = 2;
+}
+
+message NegotiateTransferResponse {
+  string transfer_id = 1;
+  string quic_endpoint = 2;
+  bytes one_time_upload_capability = 3;
+  int64 expires_at_unix_ms = 4;
+  uint32 max_parallel_streams = 5;
+  bool https_fallback_allowed = 6;
+}
+
+message CommittedChunk {
+  uint32 index = 1;
+  uint32 plaintext_length = 2;
+  bytes ciphertext_sha256 = 3;
+}
+
+message CommitChunksRequest {
+  RequestContext context = 1;
+  string transfer_id = 2;
+  repeated CommittedChunk chunks = 3;
+}
+
+message CommitChunksResponse {
+  uint32 committed_count = 1;
+}
+
+message GetMissingChunksRequest {
+  RequestContext context = 1;
+  string transfer_id = 2;
+}
+
+message GetMissingChunksResponse {
+  repeated uint32 missing_indexes = 1;
+  bytes one_time_download_capability = 2;
+  int64 expires_at_unix_ms = 3;
+}
+
+message CompleteTransferRequest {
+  RequestContext context = 1;
+  string transfer_id = 2;
+  bytes reconstructed_plaintext_sha256 = 3;
+}
+
+message CompleteTransferResponse {
+  bool accepted = 1;
+  int64 cleanup_after_unix_ms = 2;
+}
