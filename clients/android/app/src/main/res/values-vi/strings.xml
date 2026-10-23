@@ -28,6 +28,11 @@
   <string name="message_compose">Tin nhắn</string>
   <string name="message_send">Gửi</string>
   <string name="message_synced_count">Đã đồng bộ %1$d tin</string>
+  <string name="secret_chat">Trò chuyện bí mật</string>
+  <string name="secret_group">Nhóm</string>
+  <string name="secret_enable">Bật mã hóa đầu cuối</string>
+  <string name="secret_enabled">Đã bật Secret Chat • bộ mã hậu lượng tử lai</string>
+  <string name="secret_member_ids">UUID thành viên, phân cách bằng dấu phẩy</string>
   <string name="call_title">Gọi</string>
   <string name="call_not_available">Cuộc gọi cần signaling/SFU production</string>
   <string name="profile_user_id">User ID</string>

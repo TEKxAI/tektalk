@@ -9,6 +9,7 @@ extern "C" {
 typedef struct tektalk_session tektalk_session;
 typedef struct tektalk_snowflake tektalk_snowflake;
 typedef struct tektalk_account_store tektalk_account_store;
+typedef struct tektalk_secret_device tektalk_secret_device;
 
 enum tektalk_accept_result {
   TEKTALK_ACCEPTED = 0,
@@ -56,6 +57,17 @@ int32_t tektalk_plugin_verify_artifact(
     const uint8_t expected_sha256[32],
     const uint8_t signature[64],
     const uint8_t public_key[32]);
+
+/* Opt-in Secret Chat. All returned strings are UTF-8 JSON owned by Rust and
+ * must be released with tektalk_string_destroy. A NULL result fails closed. */
+tektalk_secret_device* tektalk_secret_device_create(const char* user_id, const char* device_id);
+void tektalk_secret_device_destroy(tektalk_secret_device* device);
+char* tektalk_secret_public_bundle_json(const tektalk_secret_device* device);
+char* tektalk_secret_begin_epoch_json(tektalk_secret_device* device, const char* conversation_id, const char* kind, uint64_t epoch, const char* bundles_json);
+int32_t tektalk_secret_accept_key_json(tektalk_secret_device* device, const char* conversation_id, const char* sender_device_id, const char* kind, uint64_t epoch, const char* wrapped_json);
+char* tektalk_secret_encrypt_json(tektalk_secret_device* device, const char* conversation_id, uint64_t epoch, const char* plaintext);
+char* tektalk_secret_decrypt_json(tektalk_secret_device* device, const char* message_json);
+void tektalk_string_destroy(char* value);
 
 #ifdef __cplusplus
 }
