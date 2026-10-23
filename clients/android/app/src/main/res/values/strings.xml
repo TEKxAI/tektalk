@@ -28,6 +28,11 @@
   <string name="message_compose">Message</string>
   <string name="message_send">Send</string>
   <string name="message_synced_count">Synced %1$d messages</string>
+  <string name="secret_chat">Secret Chat</string>
+  <string name="secret_group">Group</string>
+  <string name="secret_enable">Enable end-to-end encryption</string>
+  <string name="secret_enabled">Secret Chat enabled • hybrid post-quantum suite</string>
+  <string name="secret_member_ids">Member UUIDs, separated by commas</string>
   <string name="call_title">Call</string>
   <string name="call_not_available">Calls require production signaling/SFU</string>
   <string name="profile_user_id">User ID</string>

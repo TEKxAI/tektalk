@@ -11,3 +11,9 @@ interface ChatRepository {
     fun send(accessToken: String, draft: ChatDraft): Message
 }
 
+interface SecretChatRepository : AutoCloseable {
+    fun enable(accessToken:String,tokens:SessionTokens,conversationId:String,kind:String,memberIds:List<String>)
+    fun history(accessToken:String,tokens:SessionTokens,conversationId:String):List<Message>
+    fun send(accessToken:String,tokens:SessionTokens,draft:ChatDraft):Message
+}
+
