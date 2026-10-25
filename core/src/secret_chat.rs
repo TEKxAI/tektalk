@@ -96,7 +96,8 @@ impl DeviceKeyPair {
 
     pub(crate) fn restore_identity(bundle: DeviceBundle, x25519: [u8; 32], seed: &[u8]) -> Result<Self> {
         let x25519_secret = StaticSecret::from(x25519);
-        let ml_kem_secret = <MlKem768 as Kem>::DecapsulationKey::new_from_slice(seed).map_err(|_| Error::InvalidKey)?;
+        let seed = ml_kem::Seed::try_from(seed).map_err(|_| Error::InvalidKey)?;
+        let ml_kem_secret = <MlKem768 as Kem>::DecapsulationKey::from_seed(seed);
         if PublicKey::from(&x25519_secret).to_bytes() != bundle.x25519_public
             || ml_kem_secret.encapsulation_key().to_bytes().as_slice() != bundle.ml_kem_768_public.as_slice() {
             return Err(Error::InvalidKey);
