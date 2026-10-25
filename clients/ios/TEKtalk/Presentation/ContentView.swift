@@ -74,7 +74,7 @@ private struct MessageHome: View {
 
 private struct ChatRoom: View {
     let tokens:Tokens
-    private enum Field: Hashable { case conversation, recipient, draft }
+    private enum Field: Hashable { case conversation, recipient, members, draft }
     @FocusState private var focusedField: Field?
     @State private var conversation="";@State private var recipient="";@State private var members="";@State private var draft="";@State private var messages:[ChatMessage]=[];@State private var status=L("message.start_hint");@State private var secret=false;@State private var group=false;@State private var secretService:SecretChatService?
     var body: some View {
@@ -87,7 +87,7 @@ private struct ChatRoom: View {
                     .accessibilityIdentifier("chat.recipient").focused($focusedField, equals: .recipient)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                 Toggle("Secret Chat",isOn:$secret).accessibilityIdentifier("chat.secret")
-                if secret { Toggle("Group",isOn:$group).accessibilityIdentifier("chat.secret.group");if group{TextField("Member UUIDs, separated by commas",text:$members).accessibilityIdentifier("chat.secret.members").textInputAutocapitalization(.never).autocorrectionDisabled().focused($focusedField,equals:.recipient)};Button("Enable end-to-end encryption"){Task{await enableSecret()}}.accessibilityIdentifier("chat.secret.enable") }
+                if secret { Toggle("Group",isOn:$group).accessibilityIdentifier("chat.secret.group");if group{TextField("Member UUIDs, separated by commas",text:$members).accessibilityIdentifier("chat.secret.members").textInputAutocapitalization(.never).autocorrectionDisabled().focused($focusedField,equals:.members)};Button("Enable end-to-end encryption"){Task{await enableSecret()}}.accessibilityIdentifier("chat.secret.enable") }
                 Button(L("message.sync_history")) { focusedField=nil; Task { await load() } }
                     .accessibilityIdentifier("chat.sync")
                 Text(status).font(.caption).foregroundStyle(TekDesign.muted)

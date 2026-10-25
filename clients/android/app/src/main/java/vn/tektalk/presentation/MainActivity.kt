@@ -62,7 +62,7 @@ private data class HostTab(val title:String,val icon:Int)
   val callUnavailable=stringResource(R.string.call_not_available)
   TopAppBar(title={Text(if(secret)"TEKtalk · 🔒" else "TEKtalk Chat")},navigationIcon={TextButton(onClick=onBack){Text("‹")}},actions={TextButton(onClick={status=callUnavailable}){Text(stringResource(R.string.call_title))}})
   Column(Modifier.padding(horizontal=14.dp)){
-   OutlinedTextField(conversation,{conversation=it},Modifier.fillMaxWidth().testTag("chat.conversation"),label={Text(stringResource(R.string.message_conversation_uuid))},singleLine=true)
+   OutlinedTextField(conversation,{conversation=it;messages=emptyList()},Modifier.fillMaxWidth().testTag("chat.conversation"),label={Text(stringResource(R.string.message_conversation_uuid))},singleLine=true)
    OutlinedTextField(recipient,{recipient=it},Modifier.fillMaxWidth().testTag("chat.recipient"),label={Text(stringResource(R.string.message_recipient_uuid))},singleLine=true)
    Row(verticalAlignment=Alignment.CenterVertically){Text(stringResource(R.string.secret_chat),Modifier.weight(1f));Switch(secret,{secret=it;messages=emptyList()},Modifier.testTag("chat.secret"));Text(stringResource(R.string.secret_group),Modifier.padding(start=12.dp));Switch(group,{group=it},Modifier.testTag("chat.secret.group"),enabled=secret)}
    if(secret&&group)OutlinedTextField(members,{members=it},Modifier.fillMaxWidth().testTag("chat.secret.members"),label={Text(stringResource(R.string.secret_member_ids))})

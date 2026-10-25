@@ -28,7 +28,15 @@ final class MVPFlowTests: XCTestCase {
         #if os(iOS)
         for _ in 0..<4 { if e.isHittable { break }; app.swipeUp() }
         #endif
-        e.tap();Thread.sleep(forTimeInterval:0.7)
+        #if os(iOS)
+        if id=="chat.secret" || id=="chat.secret.group" {
+            e.coordinate(withNormalizedOffset:CGVector(dx:0.94,dy:0.5)).tap()
+            XCTAssertEqual(e.value as? String,"1","Secret Chat switch did not turn on")
+        } else { e.tap() }
+        #else
+        e.tap()
+        #endif
+        Thread.sleep(forTimeInterval:0.7)
     }
     private func fill(_ id: String, _ value: String) {
         let e=element(id);e.tap()
