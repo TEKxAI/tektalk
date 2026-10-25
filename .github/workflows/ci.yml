@@ -149,7 +149,7 @@ jobs:
           path: coverage/ios/xccov.json
       - name: Build iOS simulator application
         working-directory: clients/ios
-        run: xcodebuild build -project TEKtalk.xcodeproj -scheme TEKtalk -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO
+        run: xcodebuild build -project TEKtalk.xcodeproj -scheme TEKtalk -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
       - uses: actions/upload-artifact@v4
         with:
           name: tektalk-ios-simulator

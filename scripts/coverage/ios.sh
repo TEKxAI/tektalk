@@ -16,7 +16,7 @@ xcodebuild test \
   -destination "platform=iOS Simulator,id=$device_id" \
   -enableCodeCoverage YES \
   -resultBundlePath "$result" \
-  CODE_SIGNING_ALLOWED=NO
+  CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
 
 xcrun xccov view --report --json "$result" > "$output/xccov.json"
 python3 "$root/scripts/coverage/ios.py" < "$output/xccov.json"

@@ -32,12 +32,12 @@ xcodegen generate
 udid=$(xcrun simctl list devices available -j | python3 -c 'import json,sys;print(next(x["udid"] for xs in json.load(sys.stdin)["devices"].values() for x in xs if x["name"].startswith("iPhone") and x["isAvailable"]))')
 xcrun simctl boot "$udid" || true
 xcrun simctl bootstatus "$udid" -b
-xcodebuild build-for-testing -project TEKtalk.xcodeproj -scheme TEKtalkMVP -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build-mvp CODE_SIGNING_ALLOWED=NO > "$root/recordings/ios-build.log" 2>&1
+xcodebuild build-for-testing -project TEKtalk.xcodeproj -scheme TEKtalkMVP -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build-mvp CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual > "$root/recordings/ios-build.log" 2>&1
 xcrun simctl io "$udid" recordVideo --codec=h264 "$root/recordings/ios.mp4" > "$root/recordings/ios-recorder.log" 2>&1 &
 recorder=$!
 stop_ios(){ kill -INT "$recorder" 2>/dev/null || true; wait "$recorder" || true; }
 trap stop_ios EXIT
-xcodebuild test-without-building -parallel-testing-enabled NO -project TEKtalk.xcodeproj -scheme TEKtalkMVP -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build-mvp CODE_SIGNING_ALLOWED=NO > "$root/recordings/ios-test.log" 2>&1
+xcodebuild test-without-building -parallel-testing-enabled NO -project TEKtalk.xcodeproj -scheme TEKtalkMVP -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build-mvp CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual > "$root/recordings/ios-test.log" 2>&1
 grep -Eq "testRegisterLogoutLoginAndChat.*passed" "$root/recordings/ios-test.log"
 kill -0 "$recorder"
 stop_ios
