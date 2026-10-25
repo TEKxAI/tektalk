@@ -38,7 +38,9 @@ import XCTest
                 output = [["conversation_id": conversation.uuidString, "epoch": 1, "sender_device_id": peerDeviceID.uuidString, "recipient_device_id": device.uuidString, "packet": try JSONSerialization.jsonObject(with: encoder.encode(packets[0])), "created_at": "now"]]
             case "/v1/secret/messages/send":
                 XCTAssertNil(input["body"]); XCTAssertNil(input["text"])
+                // Match PostgreSQL/serde UUID canonicalization at the real relay boundary.
                 var wire = input; wire["sender_device_id"] = device.uuidString.lowercased()
+                wire["conversation_id"] = conversation.uuidString.lowercased()
                 let value = String(decoding: try JSONSerialization.data(withJSONObject: wire), as: UTF8.self)
                 XCTAssertEqual(peer.decrypt(message: value), "outgoing secret")
                 var row = wire; row["id"] = 2; row["sender_id"] = user.uuidString; row["created_at"] = "now"
