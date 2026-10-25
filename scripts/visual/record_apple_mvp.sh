@@ -4,6 +4,19 @@ root=$(pwd)
 platform=${1:?Choose ios or macos}
 case "$platform" in ios|macos) ;; *) exit 2 ;; esac
 mkdir -p recordings
+# Keep actionable Xcode failures in Actions logs as well as diagnostic artifacts.
+report_failure() {
+  code=$?
+  for log in "$root/recordings/$platform-build.log" "$root/recordings/$platform-test.log" "$root/recordings/$platform-secret-peer.log"; do
+    if [ -f "$log" ]; then
+      echo "::group::$(basename "$log")"
+      tail -n 180 "$log"
+      echo "::endgroup::"
+    fi
+  done
+  exit "$code"
+}
+trap report_failure ERR
 brew install xcodegen ffmpeg
 sudo DevToolsSecurity -enable
 if [ "$platform" = ios ]; then
