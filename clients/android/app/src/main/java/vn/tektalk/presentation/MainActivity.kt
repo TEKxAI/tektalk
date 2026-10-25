@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,7 +33,7 @@ import vn.tektalk.R
 import vn.tektalk.data.ClientDependencies
 import vn.tektalk.domain.*
 
-class MainActivity:ComponentActivity(){override fun onCreate(state:Bundle?){super.onCreate(state);setContent{TEKtalkTheme{TEKtalkApp()}}}}
+class MainActivity:ComponentActivity(){override fun onCreate(state:Bundle?){super.onCreate(state);ClientDependencies.initialize(this);setContent{TEKtalkTheme{TEKtalkApp()}}}}
 @Composable private fun TEKtalkTheme(content:@Composable ()->Unit){MaterialTheme(colorScheme=TekDesign.colors(isSystemInDarkTheme()),content=content)}
 @Composable fun TEKtalkApp(){var tokens by remember{mutableStateOf<SessionTokens?>(null)};Surface(Modifier.fillMaxSize()){Box(Modifier.semantics{testTagsAsResourceId=true}){if(tokens==null)AuthFlow{tokens=it}else HostTabs(tokens!!){tokens=null}}}}
 
@@ -54,6 +55,8 @@ private data class HostTab(val title:String,val icon:Int)
  var conversation by remember{mutableStateOf("")};var recipient by remember{mutableStateOf("")};var members by remember{mutableStateOf("")};var draft by remember{mutableStateOf("")};var messages by remember{mutableStateOf<List<Message>>(emptyList())};var secret by remember{mutableStateOf(false)};var group by remember{mutableStateOf(false)}
  val context=LocalContext.current;val startHint=stringResource(R.string.message_start_hint);var status by remember{mutableStateOf(startHint)};val chat=remember{ClientDependencies.chat};val secretChat=remember{ClientDependencies.secretChat};val scope=rememberCoroutineScope()
  LaunchedEffect(tokens.deviceId){withContext(Dispatchers.IO){runCatching{secretChat.registerDevice(tokens.accessToken,tokens)}}}
+ val listState=rememberLazyListState()
+ LaunchedEffect(messages.lastOrNull()?.id){if(messages.isNotEmpty())listState.animateScrollToItem(messages.lastIndex)}
  fun load(){val validation=ChatLogic.validationError(ChatDraft(conversation,recipient,"history"));if(validation!=null){status=validation;return};scope.launch{runCatching{withContext(Dispatchers.IO){if(secret)secretChat.history(tokens.accessToken,tokens,conversation) else chat.history(tokens.accessToken,conversation)}}.onSuccess{messages=ChatLogic.merge(messages,it);status=context.getString(R.string.message_synced_count,it.size)}.onFailure{status=it.message.orEmpty()}}}
  Column(Modifier.fillMaxSize()){
   val callUnavailable=stringResource(R.string.call_not_available)
@@ -66,7 +69,7 @@ private data class HostTab(val title:String,val icon:Int)
    if(secret)Button(modifier=Modifier.fillMaxWidth().testTag("chat.secret.enable"),onClick={scope.launch{runCatching{withContext(Dispatchers.IO){val ids=if(group)members.split(',').map{it.trim()}.filter{it.isNotEmpty()} else listOf(recipient);secretChat.enable(tokens.accessToken,tokens,conversation,if(group)"group" else "one_to_one",ids)}}.onSuccess{status=context.getString(R.string.secret_enabled)}.onFailure{status=it.message.orEmpty()}}}){Text(stringResource(R.string.secret_enable))}
    TextButton(modifier=Modifier.testTag("chat.sync"),onClick={load()}){Text(stringResource(R.string.message_sync_history))};Text(status,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
   }
-  LazyColumn(Modifier.weight(1f).padding(horizontal=12.dp)){items(messages,key={it.id}){m->val mine=m.senderId==tokens.userId;Row(Modifier.fillMaxWidth(),horizontalArrangement=if(mine)Arrangement.End else Arrangement.Start){Surface(color=if(mine)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,shape=RoundedCornerShape(TekDesign.bubbleRadius.dp),modifier=Modifier.widthIn(max=420.dp).padding(vertical=3.dp)){Text(m.body,Modifier.padding(12.dp),color=if(mine)MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)}}}}
+  LazyColumn(Modifier.weight(1f).padding(horizontal=12.dp),state=listState){items(messages,key={it.id}){m->val mine=m.senderId==tokens.userId;Row(Modifier.fillMaxWidth(),horizontalArrangement=if(mine)Arrangement.End else Arrangement.Start){Surface(color=if(mine)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,shape=RoundedCornerShape(TekDesign.bubbleRadius.dp),modifier=Modifier.widthIn(max=420.dp).padding(vertical=3.dp)){Text(m.body,Modifier.padding(12.dp),color=if(mine)MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)}}}}
   Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){OutlinedTextField(draft,{draft=it},Modifier.weight(1f).testTag("chat.draft"),placeholder={Text(stringResource(R.string.message_compose))});Spacer(Modifier.width(8.dp));Button(modifier=Modifier.testTag("chat.send"),enabled=draft.isNotBlank()&&conversation.isNotBlank()&&recipient.isNotBlank(),onClick={val outgoing=ChatDraft(conversation,recipient,draft);val validation=ChatLogic.validationError(outgoing);if(validation!=null){status=validation}else{draft="";scope.launch{runCatching{withContext(Dispatchers.IO){if(secret)secretChat.send(tokens.accessToken,tokens,outgoing)else chat.send(tokens.accessToken,outgoing)}}.onSuccess{messages=ChatLogic.merge(messages,listOf(it))}.onFailure{status=it.message.orEmpty()}}}}){Text(stringResource(R.string.message_send))}}
  }
 }

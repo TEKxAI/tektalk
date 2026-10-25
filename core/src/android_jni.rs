@@ -23,6 +23,19 @@ fn rust_string(env: &mut JNIEnv, value: JString) -> Option<CString> {
 }
 
 #[no_mangle]
+pub extern "system" fn Java_vn_tektalk_NativeCore_nativeSecretSnapshot(env: JNIEnv, _class: JClass, handle: jlong) -> jstring {
+    // SAFETY: Kotlin serializes access to the owning device handle.
+    java_string(env, unsafe { crate::tektalk_secret_snapshot_json(handle as *const TektalkSecretDevice) })
+}
+
+#[no_mangle]
+pub extern "system" fn Java_vn_tektalk_NativeCore_nativeSecretRestore(mut env: JNIEnv, _class: JClass, snapshot: JString) -> jlong {
+    let Some(snapshot) = rust_string(&mut env, snapshot) else { return 0; };
+    // SAFETY: The CString remains live throughout the restore call.
+    unsafe { crate::tektalk_secret_restore_json(snapshot.as_ptr()) as jlong }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_vn_tektalk_NativeCore_nativeSnowflake(
     _env: *mut c_void,
     _class: *mut c_void,

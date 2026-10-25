@@ -62,6 +62,10 @@ int32_t tektalk_plugin_verify_artifact(
  * must be released with tektalk_string_destroy. A NULL result fails closed. */
 tektalk_secret_device* tektalk_secret_device_create(const char* user_id, const char* device_id);
 void tektalk_secret_device_destroy(tektalk_secret_device* device);
+/* Snapshots contain private keys. Store only with platform authenticated
+ * encryption (Keychain/Keystore); never upload them to the relay server. */
+char* tektalk_secret_snapshot_json(const tektalk_secret_device* device);
+tektalk_secret_device* tektalk_secret_restore_json(const char* snapshot_json);
 char* tektalk_secret_public_bundle_json(const tektalk_secret_device* device);
 char* tektalk_secret_begin_epoch_json(tektalk_secret_device* device, const char* conversation_id, const char* kind, uint64_t epoch, const char* bundles_json);
 int32_t tektalk_secret_accept_key_json(tektalk_secret_device* device, const char* conversation_id, const char* sender_device_id, const char* kind, uint64_t epoch, const char* wrapped_json);

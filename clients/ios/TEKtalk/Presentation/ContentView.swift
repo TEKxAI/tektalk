@@ -119,7 +119,7 @@ private struct ChatRoom: View {
         }
         .navigationTitle("TEKtalk Chat").navigationBarTitleDisplayMode(.inline)
         .task{if secretService==nil{secretService=SecretChatService(tokens:tokens)};try? await secretService?.registerDevice()}
-        .onChange(of: conversation){_,_ in messages=[]}
+        .onChange(of: conversation){_ in messages=[]}
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { status=L("call.not_available") } label: { Image(systemName:"phone.fill") }

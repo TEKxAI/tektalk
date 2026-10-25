@@ -90,6 +90,20 @@ pub struct DeviceKeyPair {
 }
 
 impl DeviceKeyPair {
+    pub(crate) fn export_identity(&self) -> (DeviceBundle, [u8; 32], Vec<u8>) {
+        (self.bundle.clone(), self.x25519_secret.to_bytes(), self.ml_kem_secret.to_bytes().as_slice().to_vec())
+    }
+
+    pub(crate) fn restore_identity(bundle: DeviceBundle, x25519: [u8; 32], seed: &[u8]) -> Result<Self> {
+        let x25519_secret = StaticSecret::from(x25519);
+        let ml_kem_secret = <MlKem768 as Kem>::DecapsulationKey::new_from_slice(seed).map_err(|_| Error::InvalidKey)?;
+        if PublicKey::from(&x25519_secret).to_bytes() != bundle.x25519_public
+            || ml_kem_secret.encapsulation_key().to_bytes().as_slice() != bundle.ml_kem_768_public.as_slice() {
+            return Err(Error::InvalidKey);
+        }
+        Ok(Self { bundle, x25519_secret, ml_kem_secret })
+    }
+
     pub fn generate(user_id: impl Into<String>, device_id: impl Into<String>) -> Self {
         let x25519_secret = StaticSecret::random_from_rng(OsRng);
         let x25519_public = PublicKey::from(&x25519_secret).to_bytes();
@@ -207,7 +221,7 @@ pub struct EncryptedMessage {
     pub ciphertext: Vec<u8>,
 }
 
-#[derive(Zeroize, ZeroizeOnDrop)]
+#[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct SenderKey {
     key: [u8; 32],
     epoch: u64,
@@ -264,6 +278,14 @@ fn message_aad(conversation_id: &str, epoch: u64, sender: &str, counter: u64) ->
 pub struct ReplayGuard(BTreeMap<(String, String, u64), BTreeSet<u64>>);
 
 impl ReplayGuard {
+    pub(crate) fn export(&self) -> Vec<(String, String, u64, Vec<u64>)> {
+        self.0.iter().map(|((conversation, sender, epoch), counters)| (conversation.clone(), sender.clone(), *epoch, counters.iter().copied().collect())).collect()
+    }
+
+    pub(crate) fn restore(rows: Vec<(String, String, u64, Vec<u64>)>) -> Self {
+        Self(rows.into_iter().map(|(conversation, sender, epoch, counters)| ((conversation, sender, epoch), counters.into_iter().collect())).collect())
+    }
+
     fn accept(&mut self, conversation: &str, sender: &str, epoch: u64, counter: u64) -> Result<()> {
         if !self.0.entry((conversation.into(), sender.into(), epoch)).or_default().insert(counter) {
             return Err(Error::Replay);

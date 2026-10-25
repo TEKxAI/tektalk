@@ -38,6 +38,8 @@ import java.util.UUID
 @Serializable private data class SendSecretDto(val conversation_id:String,val client_message_id:String,val epoch:Long,val counter:Long,val nonce:List<Int>,val ciphertext:List<Int>)
 @Serializable private data class SecretMessageDto(val id:Long,val conversation_id:String,val epoch:Long,val sender_id:String,val sender_device_id:String,val client_message_id:String,val counter:Long,val nonce:List<Int>,val ciphertext:List<Int>,val created_at:String)
 @Serializable private data class SendSecretResponseDto(val message:SecretMessageDto,val deduplicated:Boolean)
+@Serializable private data class CachedSecretDto(val wire:SecretMessageDto,val body:String)
+@Serializable private data class StoredSecretDto(val core:String,val messages:List<CachedSecretDto>)
 
 private fun TokensDto.domain() = SessionTokens(access_token, refresh_token, user_id, device_id)
 private fun MessageDto.domain() = Message(id, conversation_id, sender_id, recipient_id, client_message_id, body, created_at)
@@ -74,7 +76,7 @@ class HttpChatRepository internal constructor(private val api:HttpApi=HttpApi())
     override fun send(accessToken:String,draft:ChatDraft)=api.post<SendDto,SendResponseDto>("/v1/chat/messages/send",SendDto(draft.conversationId,draft.recipientId,UUID.randomUUID().toString(),draft.text),accessToken).message.domain()
 }
 
-class HttpSecretChatRepository internal constructor(private val api:HttpApi=HttpApi()):SecretChatRepository {
+class HttpSecretChatRepository internal constructor(private val api:HttpApi=HttpApi(),private val storage:SecretStateStorage?=null):SecretChatRepository {
     private val json=Json{ignoreUnknownKeys=true}
     private var core:NativeCore.SecretDevice?=null
     private val policies=mutableMapOf<String,SecretPolicyDto>()
@@ -83,11 +85,26 @@ class HttpSecretChatRepository internal constructor(private val api:HttpApi=Http
 
     private fun device(tokens:SessionTokens):NativeCore.SecretDevice {
         val identity=tokens.userId+":"+tokens.deviceId
-        if(owner!=identity){close();owner=identity}
+        if(owner!=identity){
+            close()
+            try{storage?.load(identity)?.let{value->
+                val stored=json.decodeFromString<StoredSecretDto>(value)
+                core=checkNotNull(NativeCore.restoreSecretDevice(stored.core)){"Stored Secret Chat identity is invalid"}
+                val bundle=json.decodeFromString<CoreBundleDto>(core!!.publicBundleJson)
+                check(bundle.user_id==tokens.userId&&bundle.device_id==tokens.deviceId){"Secret Chat identity does not match this account"}
+                stored.messages.forEach{cached->val row=cached.wire;decrypted[row.id]=row to Message(row.id,row.conversation_id,row.sender_id,row.sender_id,row.client_message_id,cached.body,row.created_at)}
+            };owner=identity}catch(error:Throwable){close();throw error}
+        }
         return core ?: checkNotNull(NativeCore.secretDevice(tokens.userId,tokens.deviceId)){"Rust Secret Chat core is unavailable"}.also{core=it}
+    }
+    private fun save(){
+        val storage=storage ?: return
+        val handle=core ?: return
+        storage.save(checkNotNull(owner),json.encodeToString(StoredSecretDto(handle.snapshotJson,decrypted.values.map{(row,message)->CachedSecretDto(row,message.body)})))
     }
     private fun register(accessToken:String,tokens:SessionTokens){
         val bundle=json.decodeFromString<CoreBundleDto>(device(tokens).publicBundleJson)
+        save()
         api.post<RegisterSecretBundleDto,ServerBundleDto>("/v1/secret/devices/register",RegisterSecretBundleDto(bundle.suites.single(),bundle.x25519_public,bundle.ml_kem_768_public),accessToken)
     }
     @Synchronized override fun registerDevice(accessToken:String,tokens:SessionTokens){register(accessToken,tokens)}
@@ -101,6 +118,7 @@ class HttpSecretChatRepository internal constructor(private val api:HttpApi=Http
         check(serverBundles.any{it.user_id!=tokens.userId}){"Every peer must register a Secret Chat device before opt-in"}
         val coreBundles=serverBundles.map{CoreBundleDto(it.user_id,it.device_id,it.x25519_public,it.ml_kem_768_public,listOf(it.suite))}
         val wrappedJson=device(tokens).beginEpoch(conversationId,policy.kind,policy.epoch,json.encodeToString(coreBundles))
+        save()
         val wrapped=json.decodeFromString<List<CoreWrappedKeyDto>>(wrappedJson)
         api.post<PublishKeysDto,JsonElement>("/v1/secret/keys/publish",PublishKeysDto(conversationId,policy.epoch,wrapped.map{PublishPacketDto(it.recipient_device_id,json.encodeToJsonElement(it))}),accessToken)
         policies[conversationId]=policy
@@ -120,12 +138,13 @@ class HttpSecretChatRepository internal constructor(private val api:HttpApi=Http
             decrypted[row.id]?.let{(wire,message)->check(wire==row){"Secret Chat history changed"};return@map message}
             val encrypted=CoreEncryptedDto(row.conversation_id,row.epoch,row.sender_device_id,row.counter,row.nonce,row.ciphertext)
             val body=device(tokens).decrypt(json.encodeToString(encrypted))
-            Message(row.id,row.conversation_id,row.sender_id,row.sender_id,row.client_message_id,body,row.created_at).also{decrypted[row.id]=row to it}
+            Message(row.id,row.conversation_id,row.sender_id,row.sender_id,row.client_message_id,body,row.created_at).also{decrypted[row.id]=row to it;save()}
         }
     }
     @Synchronized override fun send(accessToken:String,tokens:SessionTokens,draft:ChatDraft):Message{
         val policy=prepare(accessToken,tokens,draft.conversationId)
         val encrypted=json.decodeFromString<CoreEncryptedDto>(device(tokens).encrypt(draft.conversationId,policy.epoch,draft.text))
+        save()
         val result=api.post<SendSecretDto,SendSecretResponseDto>("/v1/secret/messages/send",SendSecretDto(draft.conversationId,UUID.randomUUID().toString(),encrypted.epoch,encrypted.counter,encrypted.nonce,encrypted.ciphertext),accessToken).message
         return Message(result.id,result.conversation_id,result.sender_id,result.sender_id,result.client_message_id,draft.text,result.created_at)
     }
@@ -133,7 +152,9 @@ class HttpSecretChatRepository internal constructor(private val api:HttpApi=Http
 }
 
 object ClientDependencies {
+    private lateinit var context:android.content.Context
+    fun initialize(context:android.content.Context){this.context=context.applicationContext}
     val auth: AuthRepository by lazy { HttpAuthRepository() }
     val chat: ChatRepository by lazy { HttpChatRepository() }
-    val secretChat: SecretChatRepository by lazy { HttpSecretChatRepository() }
+    val secretChat: SecretChatRepository by lazy { HttpSecretChatRepository(storage=AndroidSecretStateStorage(context)) }
 }

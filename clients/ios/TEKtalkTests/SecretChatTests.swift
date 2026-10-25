@@ -59,7 +59,8 @@ import XCTest
         defer { SecretProtocol.handler = nil }
         let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [SecretProtocol.self]
         let api = APIClient(baseURL: URL(string: "https://secret.test")!, session: URLSession(configuration: config))
-        let service = try XCTUnwrap(SecretChatService(tokens: tokens, api: api))
+        let storage = MemorySecretStorage()
+        let service = try XCTUnwrap(SecretChatService(tokens: tokens, api: api, storage: storage))
         try await service.enable(conversation: conversation, kind: "group", members: [peerID])
         let first = try await service.history(conversation: conversation)
         XCTAssertEqual(first.map(\.body), ["incoming secret"])
@@ -70,10 +71,19 @@ import XCTest
         let reload = try await service.history(conversation: conversation)
         XCTAssertEqual(second.map(\.body), ["incoming secret", "outgoing secret"])
         XCTAssertEqual(reload.map(\.body), second.map(\.body))
+        let reopened = try XCTUnwrap(SecretChatService(tokens: tokens, api: api, storage: storage))
+        let restored = try await reopened.history(conversation: conversation)
+        XCTAssertEqual(restored.map(\.body), second.map(\.body))
         corrupt = true
         do { _ = try await service.history(conversation: conversation); XCTFail("Changed ciphertext must fail") }
         catch { XCTAssertEqual((error as? URLError)?.code, .cannotDecodeContentData) }
     }
+}
+
+private final class MemorySecretStorage: SecretStateStorage {
+    var values: [String: Data] = [:]
+    func load(account: String) throws -> Data? { values[account] }
+    func save(account: String, data: Data) throws { values[account] = data }
 }
 
 private final class SecretProtocol: URLProtocol {

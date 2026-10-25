@@ -10,6 +10,25 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  quality-start:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions: {contents: read, statuses: write}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/ci/publish-status.py quality-gate/visual
+        env: {GITHUB_TOKEN: '${{ github.token }}'}
+  quality-result:
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [quality-start, web, android, apple, windows, videos]
+    runs-on: ubuntu-latest
+    permissions: {contents: read, statuses: write}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/ci/publish-status.py quality-gate/visual
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          QUALITY_RESULTS: ${{ toJSON(needs) }}
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 40

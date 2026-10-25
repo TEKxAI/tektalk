@@ -12,6 +12,8 @@ object NativeCore {
     @JvmStatic private external fun nativeSecretCreate(userId: String, deviceId: String): Long
     @JvmStatic private external fun nativeSecretDestroy(handle: Long)
     @JvmStatic private external fun nativeSecretBundle(handle: Long): String?
+    @JvmStatic private external fun nativeSecretSnapshot(handle: Long): String?
+    @JvmStatic private external fun nativeSecretRestore(snapshot: String): Long
     @JvmStatic private external fun nativeSecretBegin(handle: Long, conversationId: String, kind: String, epoch: Long, bundlesJson: String): String?
     @JvmStatic private external fun nativeSecretAccept(handle: Long, conversationId: String, senderDeviceId: String, kind: String, epoch: Long, wrappedJson: String): Boolean
     @JvmStatic private external fun nativeSecretEncrypt(handle: Long, conversationId: String, epoch: Long, plaintext: String): String?
@@ -25,6 +27,7 @@ object NativeCore {
         available && conversationId > 0 && nativeDatabaseOpenConversation(handle, conversationId)
 
     class SecretDevice internal constructor(private var handle:Long):AutoCloseable {
+        val snapshotJson:String get()=checkNotNull(nativeSecretSnapshot(handle)){"Secret Chat snapshot failed"}
         val publicBundleJson:String get()=checkNotNull(nativeSecretBundle(handle)){"Secret Chat core rejected device state"}
         fun beginEpoch(conversationId:String,kind:String,epoch:Long,bundlesJson:String):String = checkNotNull(nativeSecretBegin(handle,conversationId,kind,epoch,bundlesJson)){"Secret Chat key distribution failed"}
         fun acceptKey(conversationId:String,senderDeviceId:String,kind:String,epoch:Long,wrappedJson:String):Boolean = nativeSecretAccept(handle,conversationId,senderDeviceId,kind,epoch,wrappedJson)
@@ -33,4 +36,5 @@ object NativeCore {
         override fun close(){if(handle!=0L){nativeSecretDestroy(handle);handle=0}}
     }
     fun secretDevice(userId:String,deviceId:String):SecretDevice? = if(available) nativeSecretCreate(userId,deviceId).takeIf{it!=0L}?.let(::SecretDevice) else null
+    fun restoreSecretDevice(snapshot:String):SecretDevice? = if(available) nativeSecretRestore(snapshot).takeIf{it!=0L}?.let(::SecretDevice) else null
 }

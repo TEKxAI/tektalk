@@ -23,6 +23,8 @@ def library():
     signatures = {
         'device_create': ([C.c_char_p, C.c_char_p], C.c_void_p),
         'device_destroy': ([C.c_void_p], None),
+        'snapshot_json': ([C.c_void_p], C.c_void_p),
+        'restore_json': ([C.c_char_p], C.c_void_p),
         'public_bundle_json': ([C.c_void_p], C.c_void_p),
         'begin_epoch_json': ([C.c_void_p, C.c_char_p, C.c_char_p, C.c_uint64, C.c_char_p], C.c_void_p),
         'accept_key_json': ([C.c_void_p, C.c_char_p, C.c_char_p, C.c_char_p, C.c_uint64, C.c_char_p], C.c_int32),
@@ -106,6 +108,15 @@ def verify():
         repeated = alice.send(conversation, 'same epoch still works', policy)
         assert repeated['counter'] == row['counter'] + 1
         assert bob.decrypt(repeated) == 'same epoch still works'
+        # Recreate the Core handle exactly as a restarted native client does.
+        snapshot = alice.take(lib.tektalk_secret_snapshot_json(alice.handle))
+        restored = lib.tektalk_secret_restore_json(snapshot.encode())
+        assert restored, 'Snapshot restore failed'
+        lib.tektalk_secret_device_destroy(alice.handle); alice.handle = restored
+        assert not lib.tektalk_secret_decrypt_json(alice.handle, encoded(reply)), 'Replay guard was lost on restore'
+        resumed = alice.send(conversation, 'after restart', policy)
+        assert resumed['counter'] == repeated['counter'] + 1
+        assert bob.decrypt(resumed) == 'after restart'
         try:
             alice.request('/v1/chat/messages/send', dict(conversation_id=conversation, recipient_id=bob_tokens['user_id'], client_message_id=str(uuid.uuid4()), text='forbidden plaintext'))
             raise AssertionError('Plaintext downgrade accepted')

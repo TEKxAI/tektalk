@@ -12,6 +12,25 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  quality-start:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions: {contents: read, statuses: write}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/ci/publish-status.py quality-gate/ci
+        env: {GITHUB_TOKEN: '${{ github.token }}'}
+  quality-result:
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [quality-start, architecture, rust, web, android, ios, macos, windows, docker, local-stack]
+    runs-on: ubuntu-latest
+    permissions: {contents: read, statuses: write}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/ci/publish-status.py quality-gate/ci
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          QUALITY_RESULTS: ${{ toJSON(needs) }}
   architecture:
     runs-on: ubuntu-latest
     steps:

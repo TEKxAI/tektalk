@@ -6,6 +6,8 @@ import Foundation
 @_silgen_name("tektalk_secret_device_create") private func tektalkSecretCreate(_ user: UnsafePointer<CChar>, _ device: UnsafePointer<CChar>) -> UnsafeMutableRawPointer?
 @_silgen_name("tektalk_secret_device_destroy") private func tektalkSecretDestroy(_ handle: UnsafeMutableRawPointer?)
 @_silgen_name("tektalk_secret_public_bundle_json") private func tektalkSecretBundle(_ handle: UnsafeMutableRawPointer?) -> UnsafeMutablePointer<CChar>?
+@_silgen_name("tektalk_secret_snapshot_json") private func tektalkSecretSnapshot(_ handle: UnsafeMutableRawPointer?) -> UnsafeMutablePointer<CChar>?
+@_silgen_name("tektalk_secret_restore_json") private func tektalkSecretRestore(_ snapshot: UnsafePointer<CChar>) -> UnsafeMutableRawPointer?
 @_silgen_name("tektalk_secret_begin_epoch_json") private func tektalkSecretBegin(_ handle: UnsafeMutableRawPointer?, _ conversation: UnsafePointer<CChar>, _ kind: UnsafePointer<CChar>, _ epoch: UInt64, _ bundles: UnsafePointer<CChar>) -> UnsafeMutablePointer<CChar>?
 @_silgen_name("tektalk_secret_accept_key_json") private func tektalkSecretAccept(_ handle: UnsafeMutableRawPointer?, _ conversation: UnsafePointer<CChar>, _ sender: UnsafePointer<CChar>, _ kind: UnsafePointer<CChar>, _ epoch: UInt64, _ wrapped: UnsafePointer<CChar>) -> Int32
 @_silgen_name("tektalk_secret_encrypt_json") private func tektalkSecretEncrypt(_ handle: UnsafeMutableRawPointer?, _ conversation: UnsafePointer<CChar>, _ epoch: UInt64, _ plaintext: UnsafePointer<CChar>) -> UnsafeMutablePointer<CChar>?
@@ -25,9 +27,11 @@ final class NativeCore {
 final class SecretDevice {
     private var handle:UnsafeMutableRawPointer?
     init?(userID:UUID,deviceID:UUID){handle=userID.uuidString.lowercased().withCString{u in deviceID.uuidString.lowercased().withCString{d in tektalkSecretCreate(u,d)}};if handle==nil{return nil}}
+    init?(snapshot:String){handle=snapshot.withCString{tektalkSecretRestore($0)};if handle==nil{return nil}}
     deinit{tektalkSecretDestroy(handle)}
     private func take(_ value:UnsafeMutablePointer<CChar>?)->String?{guard let value else{return nil};defer{tektalkStringDestroy(value)};return String(cString:value)}
     var publicBundleJSON:String?{take(tektalkSecretBundle(handle))}
+    var snapshotJSON:String?{take(tektalkSecretSnapshot(handle))}
     func begin(conversation:String,kind:String,epoch:UInt64,bundles:String)->String?{conversation.withCString{c in kind.withCString{k in bundles.withCString{b in take(tektalkSecretBegin(handle,c,k,epoch,b))}}}}
     func accept(conversation:String,sender:String,kind:String,epoch:UInt64,wrapped:String)->Bool{conversation.withCString{c in sender.withCString{s in kind.withCString{k in wrapped.withCString{w in tektalkSecretAccept(handle,c,s,k,epoch,w)==1}}}}}
     func encrypt(conversation:String,epoch:UInt64,plaintext:String)->String?{conversation.withCString{c in plaintext.withCString{p in take(tektalkSecretEncrypt(handle,c,epoch,p))}}}
