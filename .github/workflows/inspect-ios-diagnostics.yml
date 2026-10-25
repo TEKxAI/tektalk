@@ -1,0 +1,19 @@
+name: Inspect iOS diagnostics
+on:
+  pull_request:
+    paths: [".github/workflows/inspect-ios-diagnostics.yml"]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: recording-ios-diagnostics
+          run-id: 40160739870
+          github-token: ${{ github.token }}
+          path: diagnostics
+      - name: Show XCTest failure
+        run: tail -n 220 diagnostics/ios-test.log
