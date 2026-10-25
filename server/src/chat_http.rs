@@ -13,6 +13,8 @@ use crate::{auth, error::{AppError, AppResult}, state::AppState};
 
 pub async fn send(State(state):State<AppState>,headers:HeaderMap,Json(request):Json<SendMessage>)->AppResult<Json<SendMessageResponse>>{
     let claims=auth::claims(&state,&headers)?;let text=request.text.trim();
+    let secret=sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM secret_conversations WHERE conversation_id=$1)").bind(request.conversation_id).fetch_one(&state.db).await?;
+    if secret{return Err(AppError::Conflict("Secret Chat requires the ciphertext endpoint"));}
     if text.is_empty()||text.len()>16_384{return Err(AppError::Invalid("message must contain 1..16384 characters"));}
     if request.recipient_id==claims.sub{return Err(AppError::Invalid("recipient must be another account"));}
     let exists=sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM users WHERE id=$1 AND disabled_at IS NULL)").bind(request.recipient_id).fetch_one(&state.db).await?;

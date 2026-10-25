@@ -1,4 +1,4 @@
-mod auth; mod chat_http; mod commerce; mod config; mod crypto; mod error; mod realtime; mod state; mod token;
+mod auth; mod chat_http; mod commerce; mod config; mod crypto; mod error; mod realtime; mod secret_http; mod state; mod token;
 use axum::{extract::State,routing::{get,post},Router};
 use dashmap::DashMap;
 use sqlx::postgres::PgPoolOptions;
@@ -30,6 +30,14 @@ async fn main()->anyhow::Result<()>{
         .route("/healthz",get(||async{"ok"})).route("/readyz",get(ready))
         .route("/v1/auth/register",post(auth::register)).route("/v1/auth/login",post(auth::login)).route("/v1/auth/device/verify",post(auth::verify_device)).route("/v1/auth/password/reset/request",post(auth::request_reset)).route("/v1/auth/password/reset/confirm",post(auth::reset_password)).route("/v1/auth/password/change",post(auth::change_password))
         .route("/v1/chat/messages/send",post(chat_http::send)).route("/v1/chat/messages/history",post(chat_http::history))
+        .route("/v1/secret/devices/register",post(secret_http::register_bundle))
+        .route("/v1/secret/conversations/enable",post(secret_http::enable))
+        .route("/v1/secret/conversations/policy",post(secret_http::policy))
+        .route("/v1/secret/conversations/bundles",post(secret_http::bundles))
+        .route("/v1/secret/keys/publish",post(secret_http::publish_keys))
+        .route("/v1/secret/keys/inbox",post(secret_http::key_packets))
+        .route("/v1/secret/messages/send",post(secret_http::send))
+        .route("/v1/secret/messages/history",post(secret_http::history))
         .route("/v1/commerce/plans",get(commerce::list_plans)).route("/v1/commerce/subscription",post(commerce::activate).delete(commerce::cancel)).route("/v1/commerce/entitlements",get(commerce::entitlements))
         .route("/v1/realtime/bootstrap",post(realtime::bootstrap)).route("/v1/realtime/connect",get(realtime::socket))
         .fallback_service(ServeDir::new("clients/web").append_index_html_on_directories(true))

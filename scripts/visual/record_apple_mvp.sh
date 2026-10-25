@@ -4,28 +4,47 @@ root=$(pwd)
 platform=${1:?Choose ios or macos}
 case "$platform" in ios|macos) ;; *) exit 2 ;; esac
 mkdir -p recordings
+# Keep actionable Xcode failures in Actions logs as well as diagnostic artifacts.
+report_failure() {
+  code=$?
+  for log in "$root/recordings/$platform-build.log" "$root/recordings/$platform-test.log" "$root/recordings/$platform-secret-peer.log"; do
+    if [ -f "$log" ]; then
+      echo "::group::$(basename "$log")"
+      tail -n 180 "$log"
+      echo "::endgroup::"
+    fi
+  done
+  exit "$code"
+}
+trap report_failure ERR
 brew install xcodegen ffmpeg
 sudo DevToolsSecurity -enable
 if [ "$platform" = ios ]; then
 python3 scripts/visual/scenario.py prepare --platform ios --fixture clients/ios/TEKtalkFlowTests/fixture.json
+python3 scripts/visual/secret_peer.py serve --fixture clients/ios/TEKtalkFlowTests/fixture.json > recordings/ios-secret-peer.log 2>&1 &
+for attempt in $(seq 1 30); do
+  if curl --fail --silent http://127.0.0.1:8766/ >/dev/null; then break; fi
+  sleep 1
+done
+curl --fail --silent http://127.0.0.1:8766/ >/dev/null
 cd clients/ios
 xcodegen generate
 udid=$(xcrun simctl list devices available -j | python3 -c 'import json,sys;print(next(x["udid"] for xs in json.load(sys.stdin)["devices"].values() for x in xs if x["name"].startswith("iPhone") and x["isAvailable"]))')
 xcrun simctl boot "$udid" || true
 xcrun simctl bootstatus "$udid" -b
-xcodebuild build-for-testing -project TEKtalk.xcodeproj -scheme TEKtalkMVP -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build-mvp CODE_SIGNING_ALLOWED=NO > "$root/recordings/ios-build.log" 2>&1
+xcodebuild build-for-testing -project TEKtalk.xcodeproj -scheme TEKtalkMVP -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build-mvp CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual > "$root/recordings/ios-build.log" 2>&1
 xcrun simctl io "$udid" recordVideo --codec=h264 "$root/recordings/ios.mp4" > "$root/recordings/ios-recorder.log" 2>&1 &
 recorder=$!
 stop_ios(){ kill -INT "$recorder" 2>/dev/null || true; wait "$recorder" || true; }
 trap stop_ios EXIT
-xcodebuild test-without-building -parallel-testing-enabled NO -project TEKtalk.xcodeproj -scheme TEKtalkMVP -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build-mvp CODE_SIGNING_ALLOWED=NO > "$root/recordings/ios-test.log" 2>&1
+xcodebuild test-without-building -parallel-testing-enabled NO -project TEKtalk.xcodeproj -scheme TEKtalkMVP -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build-mvp CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual > "$root/recordings/ios-test.log" 2>&1
 grep -Eq "testRegisterLogoutLoginAndChat.*passed" "$root/recordings/ios-test.log"
 kill -0 "$recorder"
 stop_ios
 trap - EXIT
 cd "$root"
 python3 scripts/visual/scenario.py verify-existing --fixture clients/ios/TEKtalkFlowTests/fixture.json
-python3 -c 'import json,pathlib;pathlib.Path("recordings/ios-flow.json").write_text(json.dumps(dict(platform="ios",registration=True,logout=True,login=True,verification=True,sent_and_received_in_ui=True)))'
+python3 -c 'import json,pathlib;pathlib.Path("recordings/ios-flow.json").write_text(json.dumps(dict(platform="ios",registration=True,logout=True,login=True,verification=True,sent_and_received_in_ui=True,secret_one_to_one=True,secret_group=True,secret_history_reload=True)))'
 else
 python3 scripts/visual/scenario.py prepare --platform macos --fixture clients/macos/TEKtalkMacFlowTests/fixture.json
 python3 - <<'FIXTURE'

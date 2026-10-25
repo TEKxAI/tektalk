@@ -12,6 +12,25 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  quality-start:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions: {contents: read, statuses: write}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/ci/publish-status.py quality-gate/ci
+        env: {GITHUB_TOKEN: '${{ github.token }}'}
+  quality-result:
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [quality-start, architecture, rust, web, android, ios, macos, windows, docker, local-stack]
+    runs-on: ubuntu-latest
+    permissions: {contents: read, statuses: write}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/ci/publish-status.py quality-gate/ci
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          QUALITY_RESULTS: ${{ toJSON(needs) }}
   architecture:
     runs-on: ubuntu-latest
     steps:
@@ -130,7 +149,7 @@ jobs:
           path: coverage/ios/xccov.json
       - name: Build iOS simulator application
         working-directory: clients/ios
-        run: xcodebuild build -project TEKtalk.xcodeproj -scheme TEKtalk -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO
+        run: xcodebuild build -project TEKtalk.xcodeproj -scheme TEKtalk -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
       - uses: actions/upload-artifact@v4
         with:
           name: tektalk-ios-simulator
@@ -220,7 +239,7 @@ jobs:
       - name: Start complete local stack
         run: docker compose up --build -d --wait --wait-timeout 600
       - name: Run API smoke test
-        run: ./scripts/smoke-test.sh
+        run: sh scripts/smoke-test.sh
       - name: Show service state and logs on failure
         if: failure()
         run: |

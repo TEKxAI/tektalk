@@ -3,7 +3,7 @@
 //! Swift and Kotlin/JNI consume the stable C ABI declared in
 //! `include/tektalk/ffi.h`; Rust types and ownership stay inside this crate.
 
-use std::ffi::CStr;
+use std::{collections::HashMap, ffi::{CStr, CString}};
 
 pub mod id;
 pub mod adaptive_transport;
@@ -97,6 +97,210 @@ pub struct TektalkSnowflake {
 #[repr(C)]
 pub struct TektalkAccountStore {
     store: storage::AccountStore,
+}
+
+/// Device-scoped Secret Chat state. Snapshots contain secrets and MUST be
+/// encrypted/authenticated by the host platform before durable storage.
+#[repr(C)]
+pub struct TektalkSecretDevice {
+    keys: secret_chat::DeviceKeyPair,
+    senders: HashMap<(String, u64), secret_chat::SenderKey>,
+    receivers: HashMap<(String, u64, String), secret_chat::SenderKey>,
+    replay: secret_chat::ReplayGuard,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct SecretSnapshot {
+    version: u32,
+    bundle: secret_chat::DeviceBundle,
+    x25519: [u8; 32],
+    ml_kem_seed: Vec<u8>,
+    senders: Vec<(String, u64, secret_chat::SenderKey)>,
+    receivers: Vec<(String, u64, String, secret_chat::SenderKey)>,
+    replay: Vec<(String, String, u64, Vec<u64>)>,
+}
+
+/// Exports secret state for platform-protected storage, never for the server.
+/// # Safety
+/// The device must be live and serialized. Release the result with string_destroy.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_secret_snapshot_json(device: *const TektalkSecretDevice) -> *mut std::ffi::c_char {
+    let Some(device) = (unsafe { device.as_ref() }) else { return std::ptr::null_mut(); };
+    let (bundle, x25519, ml_kem_seed) = device.keys.export_identity();
+    let mut snapshot = SecretSnapshot {
+        version: 1, bundle, x25519, ml_kem_seed,
+        senders: device.senders.iter().map(|((c, e), k)| (c.clone(), *e, k.clone())).collect(),
+        receivers: device.receivers.iter().map(|((c, e, s), k)| (c.clone(), *e, s.clone(), k.clone())).collect(),
+        replay: device.replay.export(),
+    };
+    let json = serde_json::to_string(&snapshot);
+    use zeroize::Zeroize;
+    snapshot.x25519.zeroize(); snapshot.ml_kem_seed.zeroize();
+    json.ok().map(c_string).unwrap_or(std::ptr::null_mut())
+}
+
+/// Restores a snapshot after the host authenticates/decrypts its local storage.
+/// # Safety
+/// The argument must be live, NUL-terminated UTF-8. The returned handle is owned.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_secret_restore_json(snapshot_json: *const std::ffi::c_char) -> *mut TektalkSecretDevice {
+    let Some(json) = (unsafe { utf8(snapshot_json) }) else { return std::ptr::null_mut(); };
+    let Ok(mut snapshot) = serde_json::from_str::<SecretSnapshot>(json) else { return std::ptr::null_mut(); };
+    if snapshot.version != 1 { return std::ptr::null_mut(); }
+    let restored = secret_chat::DeviceKeyPair::restore_identity(snapshot.bundle, snapshot.x25519, &snapshot.ml_kem_seed);
+    use zeroize::Zeroize;
+    snapshot.x25519.zeroize(); snapshot.ml_kem_seed.zeroize();
+    let Ok(keys) = restored else { return std::ptr::null_mut(); };
+    Box::into_raw(Box::new(TektalkSecretDevice {
+        keys,
+        senders: snapshot.senders.into_iter().map(|(c,e,k)| ((c,e),k)).collect(),
+        receivers: snapshot.receivers.into_iter().map(|(c,e,s,k)| ((c,e,s),k)).collect(),
+        replay: secret_chat::ReplayGuard::restore(snapshot.replay),
+    }))
+}
+
+fn c_string(value: String) -> *mut std::ffi::c_char {
+    CString::new(value).map(CString::into_raw).unwrap_or(std::ptr::null_mut())
+}
+
+unsafe fn utf8<'a>(value: *const std::ffi::c_char) -> Option<&'a str> {
+    if value.is_null() { return None; }
+    // SAFETY: The caller guarantees a live, NUL-terminated string.
+    unsafe { CStr::from_ptr(value) }.to_str().ok()
+}
+
+fn secret_policy(kind: &str, epoch: u64) -> Option<secret_chat::SecretChatPolicy> {
+    let kind = match kind {
+        "one_to_one" => secret_chat::ConversationKind::OneToOne,
+        "group" => secret_chat::ConversationKind::Group,
+        _ => return None,
+    };
+    Some(secret_chat::SecretChatPolicy { enabled: true, kind, required_suite: secret_chat::SUITE.into(), epoch })
+}
+
+/// Creates the device identity used by all opt-in Secret Chats on this device.
+///
+/// # Safety
+/// Both arguments must be live, NUL-terminated UTF-8 strings.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_secret_device_create(user_id: *const std::ffi::c_char, device_id: *const std::ffi::c_char) -> *mut TektalkSecretDevice {
+    let (Some(user_id), Some(device_id)) = (unsafe { utf8(user_id) }, unsafe { utf8(device_id) }) else { return std::ptr::null_mut(); };
+    Box::into_raw(Box::new(TektalkSecretDevice {
+        keys: secret_chat::DeviceKeyPair::generate(user_id, device_id),
+        senders: HashMap::new(), receivers: HashMap::new(), replay: secret_chat::ReplayGuard::default(),
+    }))
+}
+
+/// # Safety
+/// The pointer must be uniquely owned and returned by `tektalk_secret_device_create`.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_secret_device_destroy(device: *mut TektalkSecretDevice) {
+    if !device.is_null() { drop(unsafe { Box::from_raw(device) }); }
+}
+
+/// Returns a JSON public bundle. Release it with `tektalk_string_destroy`.
+///
+/// # Safety
+/// `device` must be a live Secret Chat handle and access must be serialized.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_secret_public_bundle_json(device: *const TektalkSecretDevice) -> *mut std::ffi::c_char {
+    let Some(device) = (unsafe { device.as_ref() }) else { return std::ptr::null_mut(); };
+    c_string(serde_json::to_string(&device.keys.bundle).unwrap_or_default())
+}
+
+/// Creates a fresh sender key for the epoch and returns wrapped-key packets as
+/// JSON. The JSON input is an array of public `DeviceBundle` values.
+///
+/// # Safety
+/// Pointers must be live and access to `device` must be serialized.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_secret_begin_epoch_json(
+    device: *mut TektalkSecretDevice,
+    conversation_id: *const std::ffi::c_char,
+    kind: *const std::ffi::c_char,
+    epoch: u64,
+    bundles_json: *const std::ffi::c_char,
+) -> *mut std::ffi::c_char {
+    let (Some(device), Some(conversation_id), Some(kind), Some(bundles_json)) = (
+        unsafe { device.as_mut() }, unsafe { utf8(conversation_id) }, unsafe { utf8(kind) }, unsafe { utf8(bundles_json) }
+    ) else { return std::ptr::null_mut(); };
+    let (Some(policy), Ok(bundles)) = (secret_policy(kind, epoch), serde_json::from_str::<Vec<secret_chat::DeviceBundle>>(bundles_json)) else { return std::ptr::null_mut(); };
+    // Repeated opt-in or device discovery must not replace a live epoch key or
+    // reset its counter: old messages must remain decryptable.
+    let sender = device.senders.entry((conversation_id.into(), epoch))
+        .or_insert_with(|| secret_chat::SenderKey::generate(epoch));
+    let Ok(packets) = secret_chat::distribute_sender_key(conversation_id, sender, &bundles, &policy) else { return std::ptr::null_mut(); };
+    c_string(serde_json::to_string(&packets).unwrap_or_default())
+}
+
+/// Imports one wrapped sender key received from another member device.
+///
+/// # Safety
+/// Pointers must be live and access to `device` must be serialized.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_secret_accept_key_json(
+    device: *mut TektalkSecretDevice,
+    conversation_id: *const std::ffi::c_char,
+    sender_device_id: *const std::ffi::c_char,
+    kind: *const std::ffi::c_char,
+    epoch: u64,
+    wrapped_json: *const std::ffi::c_char,
+) -> i32 {
+    let (Some(device), Some(conversation_id), Some(sender_device_id), Some(kind), Some(wrapped_json)) = (
+        unsafe { device.as_mut() }, unsafe { utf8(conversation_id) }, unsafe { utf8(sender_device_id) }, unsafe { utf8(kind) }, unsafe { utf8(wrapped_json) }
+    ) else { return 0; };
+    let (Some(policy), Ok(wrapped)) = (secret_policy(kind, epoch), serde_json::from_str::<secret_chat::WrappedSenderKey>(wrapped_json)) else { return 0; };
+    let Ok(sender) = secret_chat::unwrap_sender_key(conversation_id, &device.keys, &wrapped, &policy) else { return 0; };
+    device.receivers.insert((conversation_id.into(), epoch, sender_device_id.into()), sender);
+    1
+}
+
+/// Encrypts UTF-8 plaintext and returns an `EncryptedMessage` JSON value.
+///
+/// # Safety
+/// Pointers must be live and access to `device` must be serialized.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_secret_encrypt_json(
+    device: *mut TektalkSecretDevice,
+    conversation_id: *const std::ffi::c_char,
+    epoch: u64,
+    plaintext: *const std::ffi::c_char,
+) -> *mut std::ffi::c_char {
+    let (Some(device), Some(conversation_id), Some(plaintext)) = (unsafe { device.as_mut() }, unsafe { utf8(conversation_id) }, unsafe { utf8(plaintext) }) else { return std::ptr::null_mut(); };
+    let Some(sender) = device.senders.get_mut(&(conversation_id.into(), epoch)) else { return std::ptr::null_mut(); };
+    let Ok(message) = sender.encrypt(conversation_id, &device.keys.bundle.device_id, plaintext.as_bytes()) else { return std::ptr::null_mut(); };
+    c_string(serde_json::to_string(&message).unwrap_or_default())
+}
+
+/// Decrypts an `EncryptedMessage` JSON value and returns UTF-8 plaintext.
+/// Replays and authentication failures return NULL.
+///
+/// # Safety
+/// Pointers must be live and access to `device` must be serialized.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_secret_decrypt_json(device: *mut TektalkSecretDevice, message_json: *const std::ffi::c_char) -> *mut std::ffi::c_char {
+    let (Some(device), Some(message_json)) = (unsafe { device.as_mut() }, unsafe { utf8(message_json) }) else { return std::ptr::null_mut(); };
+    let Ok(message) = serde_json::from_str::<secret_chat::EncryptedMessage>(message_json) else { return std::ptr::null_mut(); };
+    let plaintext = if message.sender_device_id == device.keys.bundle.device_id {
+        let Some(sender) = device.senders.get(&(message.conversation_id.clone(), message.epoch)) else { return std::ptr::null_mut(); };
+        sender.decrypt(&message, &mut device.replay)
+    } else {
+        let Some(sender) = device.receivers.get(&(message.conversation_id.clone(), message.epoch, message.sender_device_id.clone())) else { return std::ptr::null_mut(); };
+        sender.decrypt(&message, &mut device.replay)
+    };
+    let Ok(plaintext) = plaintext else { return std::ptr::null_mut(); };
+    String::from_utf8(plaintext).ok().map(c_string).unwrap_or(std::ptr::null_mut())
+}
+
+/// # Safety
+/// A non-null pointer must have been returned by a TEKtalk JSON/string API.
+#[no_mangle]
+pub unsafe extern "C" fn tektalk_string_destroy(value: *mut std::ffi::c_char) {
+    if !value.is_null() {
+        use zeroize::Zeroize;
+        let mut bytes = unsafe { CString::from_raw(value) }.into_bytes_with_nul();
+        bytes.zeroize();
+    }
 }
 
 /// Opens an account-scoped SQLCipher store. Failure is closed: a null handle

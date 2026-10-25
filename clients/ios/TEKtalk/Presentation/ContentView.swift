@@ -74,9 +74,9 @@ private struct MessageHome: View {
 
 private struct ChatRoom: View {
     let tokens:Tokens
-    private enum Field: Hashable { case conversation, recipient, draft }
+    private enum Field: Hashable { case conversation, recipient, members, draft }
     @FocusState private var focusedField: Field?
-    @State private var conversation="";@State private var recipient="";@State private var draft="";@State private var messages:[ChatMessage]=[];@State private var status=L("message.start_hint")
+    @State private var conversation="";@State private var recipient="";@State private var members="";@State private var draft="";@State private var messages:[ChatMessage]=[];@State private var status=L("message.start_hint");@State private var secret=false;@State private var group=false;@State private var secretService:SecretChatService?
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
@@ -86,9 +86,11 @@ private struct ChatRoom: View {
                 TextField(L("message.recipient_uuid"), text: $recipient)
                     .accessibilityIdentifier("chat.recipient").focused($focusedField, equals: .recipient)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
+                Toggle("Secret Chat",isOn:$secret).accessibilityIdentifier("chat.secret")
+                if secret { Toggle("Group",isOn:$group).accessibilityIdentifier("chat.secret.group");if group{TextField("Member UUIDs, separated by commas",text:$members).accessibilityIdentifier("chat.secret.members").textInputAutocapitalization(.never).autocorrectionDisabled().focused($focusedField,equals:.members)};Button("Enable end-to-end encryption"){Task{await enableSecret()}}.accessibilityIdentifier("chat.secret.enable") }
                 Button(L("message.sync_history")) { focusedField=nil; Task { await load() } }
                     .accessibilityIdentifier("chat.sync")
-                Text(status).font(.caption).foregroundStyle(TekDesign.muted)
+                Text(status).accessibilityIdentifier("chat.status").font(.caption).foregroundStyle(TekDesign.muted)
             }.textFieldStyle(.roundedBorder).padding().background(TekDesign.surfaceVariant)
             ScrollView {
                 LazyVStack(spacing: 6) {
@@ -116,7 +118,11 @@ private struct ChatRoom: View {
             }.padding().background(.bar)
         }
         .navigationTitle("TEKtalk Chat").navigationBarTitleDisplayMode(.inline)
-        .toolbar {
+        .task{do{if secretService==nil{secretService=try SecretChatService(tokens:tokens)};try await secretService?.registerDevice()}catch{status=error.localizedDescription}}
+        .onChange(of: conversation){_ in messages=[]}
+        .toolbar { chatToolbar }
+    }
+    @ToolbarContentBuilder private var chatToolbar: some ToolbarContent {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { status=L("call.not_available") } label: { Image(systemName:"phone.fill") }
             }
@@ -124,10 +130,10 @@ private struct ChatRoom: View {
                 Spacer()
                 Button(L("common.done")) { focusedField=nil }.accessibilityIdentifier("chat.keyboard.done")
             }
-        }
     }
-    @MainActor private func load() async {guard let id=UUID(uuidString:conversation)else{status=L("message.invalid_conversation");return};do{messages=try await APIClient().history(token:tokens.access_token,conversation:id);status=String(format:L("message.synced_count"),Int64(messages.count))}catch{status=error.localizedDescription}}
-    @MainActor private func send() async {focusedField=nil;if let validation=InputValidator.chat(conversation:conversation,recipient:recipient,text:draft){status=validation;return};guard let conversation=UUID(uuidString:conversation),let recipient=UUID(uuidString:recipient)else{return};let text=draft.trimmingCharacters(in:.whitespacesAndNewlines);draft="";do{let response=try await APIClient().send(token:tokens.access_token,conversation:conversation,recipient:recipient,text:text);messages.append(response.message)}catch{status=error.localizedDescription}}
+    @MainActor private func enableSecret()async{guard let id=UUID(uuidString:conversation),let peer=UUID(uuidString:recipient),let service=secretService else{status=L("message.invalid_conversation");return};let ids=group ? members.split(separator:",").compactMap{UUID(uuidString:String($0).trimmingCharacters(in:.whitespaces))}:[peer];do{try await service.enable(conversation:id,kind:group ? "group":"one_to_one",members:ids);status="Secret Chat enabled • hybrid post-quantum suite"}catch{status=error.localizedDescription}}
+    @MainActor private func load() async {guard let id=UUID(uuidString:conversation)else{status=L("message.invalid_conversation");return};do{if secret{guard let service=secretService else{throw URLError(.cannotLoadFromNetwork)};messages=try await service.history(conversation:id)}else{messages=try await APIClient().history(token:tokens.access_token,conversation:id)};status=String(format:L("message.synced_count"),Int64(messages.count))}catch{status=error.localizedDescription}}
+    @MainActor private func send() async {focusedField=nil;if let validation=InputValidator.chat(conversation:conversation,recipient:recipient,text:draft){status=validation;return};guard let conversation=UUID(uuidString:conversation),let recipient=UUID(uuidString:recipient)else{return};let text=draft.trimmingCharacters(in:.whitespacesAndNewlines);draft="";do{if secret{guard let service=secretService else{throw URLError(.cannotLoadFromNetwork)};messages.append(try await service.send(conversation:conversation,text:text))}else{let response=try await APIClient().send(token:tokens.access_token,conversation:conversation,recipient:recipient,text:text);messages.append(response.message)}}catch{status=error.localizedDescription}}
 }
 
 private struct Placeholder: View {let title:String;let detail:String;var body:some View{NavigationStack{VStack(spacing:14){Image(systemName:"sparkles").font(.system(size:42)).foregroundStyle(TekDesign.primary);Text(title).font(.title2.bold());Text(detail).multilineTextAlignment(.center).foregroundStyle(TekDesign.muted)}.padding(28).navigationTitle(title)}}}

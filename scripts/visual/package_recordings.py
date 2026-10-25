@@ -19,6 +19,13 @@ def main():
         if not source.exists():raise RuntimeError('Missing actual recording for '+platform)
         if not (a.directory/(platform+'-flow.json')).exists() and not (a.directory/(platform+'-backend.json')).exists():raise RuntimeError('Missing completed flow evidence for '+platform)
         normalize(platform,source,out/(platform+'.mp4'))
+        secret=a.directory/(platform+'-secret.mp4')
+        if secret.exists():
+            normalize(platform,secret,out/(platform+'-secret.mp4'))
+            (out/(platform+'.mp4')).rename(out/(platform+'-basic.mp4'))
+            segments=out/(platform+'-segments.txt')
+            segments.write_text("file '"+platform+"-basic.mp4'\nfile '"+platform+"-secret.mp4'\n")
+            run('ffmpeg','-y','-f','concat','-safe','0','-i',str(segments),'-c','copy','-movflags','+faststart',str(out/(platform+'.mp4')))
     listing=out/'concat.txt';listing.write_text('\n'.join("file '"+p+".mp4'" for p in ORDER)+'\n')
     run('ffmpeg','-y','-f','concat','-safe','0','-i',str(listing),'-c','copy','-movflags','+faststart',str(out/'TEKtalk_MVP_All_Platforms.mp4'))
     report={p:{'duration_seconds':float(probe(out/(p+'.mp4'))['format']['duration']),'format':'H.264 MP4','source':'continuous real screen recording'} for p in ORDER}

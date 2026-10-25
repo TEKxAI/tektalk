@@ -10,6 +10,25 @@ on:
   workflow_call:
 permissions: {contents: read}
 jobs:
+  quality-start:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions: {contents: read, statuses: write}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/ci/publish-status.py quality-gate/security
+        env: {GITHUB_TOKEN: '${{ github.token }}'}
+  quality-result:
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [quality-start, dependencies, filesystem, secrets]
+    runs-on: ubuntu-latest
+    permissions: {contents: read, statuses: write}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/ci/publish-status.py quality-gate/security
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          QUALITY_RESULTS: ${{ toJSON(needs) }}
   dependencies:
     runs-on: ubuntu-latest
     steps:

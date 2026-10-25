@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Drive the installed Compose UI through ADB accessibility and screenrecord."""
-import json,re,subprocess,time,xml.etree.ElementTree as ET
+import json,re,subprocess,time,uuid,xml.etree.ElementTree as ET
+from urllib.request import Request,urlopen
 from pathlib import Path
 from scenario import verify_reply
 f=json.loads(Path('build/visual-fixtures/android.json').read_text())
@@ -47,3 +48,30 @@ finally:
     except subprocess.TimeoutExpired:record.terminate()
     adb('pull','/sdcard/tektalk-mvp.mp4','recordings/android.mp4')
     if complete:Path('recordings/android-flow.json').write_text(json.dumps({'platform':'android','registration':True,'logout':True,'login':True,'verification':True,'sent_and_received_in_ui':True}))
+
+# Record Secret Chat as a second continuous segment because Android's native
+# screenrecord has a 180-second limit. Packaging joins both actual recordings.
+record=subprocess.Popen(['adb','shell','screenrecord','--bit-rate','4000000','--time-limit','180','/sdcard/tektalk-secret.mp4'])
+try:
+    tap('chat.secret')
+    for kind in ('one_to_one','group'):
+        conversation=str(uuid.uuid4())
+        fill('chat.conversation',conversation)
+        if kind=='group':
+            tap('chat.secret.group');fill('chat.secret.members',f['peer_id'])
+        tap('chat.secret.enable');pause()
+        outgoing='Encrypted '+kind+' from Android'
+        incoming='Verified encrypted '+kind+' reply'
+        fill('chat.draft',outgoing);tap('chat.send');find(text=outgoing)
+        data=json.dumps(dict(conversation_id=conversation,outgoing=outgoing,incoming=incoming)).encode()
+        with urlopen(Request('http://127.0.0.1:8766/reply',data=data,headers={'Content-Type':'application/json'}),timeout=30) as response:
+            assert json.load(response)['verified']
+        tap('chat.sync');find(text=incoming);pause()
+        tap('chat.sync');find(text=incoming);pause()
+    if record.poll() is not None:raise RuntimeError('Secret Chat recording ended before flow completion')
+    Path('recordings/android-secret-flow.json').write_text(json.dumps(dict(platform='android',secret_one_to_one=True,secret_group=True,secret_history_reload=True)))
+finally:
+    subprocess.run(['adb','shell','pkill','-INT','screenrecord'],check=False)
+    try:record.wait(timeout=15)
+    except subprocess.TimeoutExpired:record.terminate()
+    adb('pull','/sdcard/tektalk-secret.mp4','recordings/android-secret.mp4')
