@@ -11,25 +11,25 @@ import Foundation
     private var decrypted: [Int64: (SecretMessage, ChatMessage)] = [:]
     private let encoder = JSONEncoder(), decoder = JSONDecoder()
 
-    init?(tokens: Tokens, api: APIClient = APIClient(), storage: SecretStateStorage? = KeychainSecretStateStorage()) {
+    init(tokens: Tokens, api: APIClient = APIClient(), storage: SecretStateStorage? = KeychainSecretStateStorage()) throws {
         self.tokens = tokens; self.api = api; self.storage = storage
         account = tokens.user_id.uuidString.lowercased() + ":" + tokens.device_id.uuidString.lowercased()
         do {
             if let data = try storage?.load(account: account) {
                 let stored = try JSONDecoder().decode(Stored.self, from: data)
-                guard let restored = SecretDevice(snapshot: stored.core), let bundleJSON = restored.publicBundleJSON else { return nil }
+                guard let restored = SecretDevice(snapshot: stored.core), let bundleJSON = restored.publicBundleJSON else { throw URLError(.cannotDecodeContentData) }
                 let bundle = try JSONDecoder().decode(CoreBundle.self, from: Data(bundleJSON.utf8))
-                guard bundle.user_id == tokens.user_id.uuidString.lowercased(), bundle.device_id == tokens.device_id.uuidString.lowercased() else { return nil }
+                guard bundle.user_id == tokens.user_id.uuidString.lowercased(), bundle.device_id == tokens.device_id.uuidString.lowercased() else { throw URLError(.cannotDecodeContentData) }
                 core = restored
                 for entry in stored.messages {
                     let row = entry.wire
                     decrypted[row.id] = (row, ChatMessage(id: row.id, conversation_id: row.conversation_id, sender_id: row.sender_id, recipient_id: row.sender_id, client_message_id: row.client_message_id, body: entry.body, created_at: row.created_at))
                 }
             } else {
-                guard let created = NativeCore.shared.secretDevice(userID: tokens.user_id, deviceID: tokens.device_id) else { return nil }
+                guard let created = NativeCore.shared.secretDevice(userID: tokens.user_id, deviceID: tokens.device_id) else { throw URLError(.cannotDecodeContentData) }
                 core = created
             }
-        } catch { return nil } // Never replace a corrupted/unavailable identity silently.
+        } catch { throw error } // Never replace a corrupted/unavailable identity silently.
     }
     private func save() throws {
         guard let storage else { return }

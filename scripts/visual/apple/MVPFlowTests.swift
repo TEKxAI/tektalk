@@ -124,11 +124,11 @@ final class MVPFlowTests: XCTestCase {
             fill("chat.conversation",conversation)
             if kind=="group" { tap("chat.secret.group");fill("chat.secret.members",f["peer_id"]!) }
             tap("chat.secret.enable")
-            Thread.sleep(forTimeInterval:2)
+            XCTAssertTrue(app.staticTexts["Secret Chat enabled • hybrid post-quantum suite"].firstMatch.waitForExistence(timeout:30), "Secret Chat initialization failed: \(app.debugDescription)")
             let outgoing="Encrypted "+kind+" from iOS"
             let incoming="Verified encrypted "+kind+" reply"
             fill("chat.draft",outgoing);tap("chat.send")
-            XCTAssertTrue(app.staticTexts[outgoing].firstMatch.waitForExistence(timeout:30))
+            XCTAssertTrue(app.staticTexts[outgoing].firstMatch.waitForExistence(timeout:30), "Encrypted send failed: \(app.debugDescription)")
             _=try post("/reply",["conversation_id":conversation,"outgoing":outgoing,"incoming":incoming])
             tap("chat.sync")
             XCTAssertTrue(app.staticTexts[incoming].firstMatch.waitForExistence(timeout:30))
