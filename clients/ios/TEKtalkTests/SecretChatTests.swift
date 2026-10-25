@@ -1,9 +1,27 @@
 import XCTest
+import Security
 @testable import TEKtalk
 
 /// The transport is deterministic, but every bundle, wrap and message passes
 /// through the actual linked Rust cryptography, including the peer's reply.
 @MainActor final class SecretChatTests: XCTestCase {
+    func testProtectedStateRoundTrip() throws {
+        let account = "storage-test:" + UUID().uuidString
+        let storage = KeychainSecretStateStorage()
+        defer {
+            SecItemDelete([kSecClass as String: kSecClassGenericPassword,
+                           kSecAttrService as String: "vn.tektalk.secret-chat-state.v1",
+                           kSecAttrAccount as String: account] as CFDictionary)
+        }
+        XCTAssertNil(try storage.load(account: account))
+        let first = Data("first protected state".utf8)
+        try storage.save(account: account, data: first)
+        XCTAssertEqual(try storage.load(account: account), first)
+        let next = Data("advanced counter".utf8)
+        try storage.save(account: account, data: next)
+        XCTAssertEqual(try storage.load(account: account), next)
+    }
+
     func testOptInSendReceiveReloadAndTamperRejection() async throws {
         let user = UUID(), device = UUID(), peerID = UUID(), peerDeviceID = UUID(), conversation = UUID()
         let tokens = Tokens(access_token: "secret-test-token", refresh_token: "r", user_id: user, device_id: device)
