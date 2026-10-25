@@ -246,7 +246,7 @@ impl SenderKey {
         let plaintext = Aes256GcmSiv::new((&self.key).into())
             .decrypt(Nonce::from_slice(&message.nonce), Payload { msg: &message.ciphertext, aad: &aad })
             .map_err(|_| Error::Authentication)?;
-        replay.accept(&message.sender_device_id, message.epoch, message.counter)?;
+        replay.accept(&message.conversation_id, &message.sender_device_id, message.epoch, message.counter)?;
         Ok(plaintext)
     }
 }
@@ -261,11 +261,11 @@ fn message_aad(conversation_id: &str, epoch: u64, sender: &str, counter: u64) ->
 }
 
 #[derive(Default)]
-pub struct ReplayGuard(BTreeMap<(String, u64), BTreeSet<u64>>);
+pub struct ReplayGuard(BTreeMap<(String, String, u64), BTreeSet<u64>>);
 
 impl ReplayGuard {
-    fn accept(&mut self, sender: &str, epoch: u64, counter: u64) -> Result<()> {
-        if !self.0.entry((sender.into(), epoch)).or_default().insert(counter) {
+    fn accept(&mut self, conversation: &str, sender: &str, epoch: u64, counter: u64) -> Result<()> {
+        if !self.0.entry((conversation.into(), sender.into(), epoch)).or_default().insert(counter) {
             return Err(Error::Replay);
         }
         Ok(())

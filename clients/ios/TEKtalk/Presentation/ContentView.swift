@@ -87,7 +87,7 @@ private struct ChatRoom: View {
                     .accessibilityIdentifier("chat.recipient").focused($focusedField, equals: .recipient)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                 Toggle("Secret Chat",isOn:$secret).accessibilityIdentifier("chat.secret")
-                if secret { Toggle("Group",isOn:$group);if group{TextField("Member UUIDs, separated by commas",text:$members).textInputAutocapitalization(.never).autocorrectionDisabled()};Button("Enable end-to-end encryption"){Task{await enableSecret()}}.accessibilityIdentifier("chat.secret.enable") }
+                if secret { Toggle("Group",isOn:$group).accessibilityIdentifier("chat.secret.group");if group{TextField("Member UUIDs, separated by commas",text:$members).accessibilityIdentifier("chat.secret.members").textInputAutocapitalization(.never).autocorrectionDisabled().focused($focusedField,equals:.recipient)};Button("Enable end-to-end encryption"){Task{await enableSecret()}}.accessibilityIdentifier("chat.secret.enable") }
                 Button(L("message.sync_history")) { focusedField=nil; Task { await load() } }
                     .accessibilityIdentifier("chat.sync")
                 Text(status).font(.caption).foregroundStyle(TekDesign.muted)
@@ -118,7 +118,8 @@ private struct ChatRoom: View {
             }.padding().background(.bar)
         }
         .navigationTitle("TEKtalk Chat").navigationBarTitleDisplayMode(.inline)
-        .task{if secretService==nil{secretService=SecretChatService(tokens:tokens)}}
+        .task{if secretService==nil{secretService=SecretChatService(tokens:tokens)};try? await secretService?.registerDevice()}
+        .onChange(of: conversation){_,_ in messages=[]}
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { status=L("call.not_available") } label: { Image(systemName:"phone.fill") }

@@ -23,6 +23,6 @@ struct PublishKeysRequest:Codable{let conversation_id:UUID;let epoch:Int64;let p
 struct KeyPacket:Codable{let conversation_id:UUID;let epoch:Int64;let sender_device_id,recipient_device_id:UUID;let packet:WrappedSenderKey;let created_at:String}
 struct CoreEncryptedMessage:Codable{let conversation_id:String;let epoch:UInt64;let sender_device_id:String;let counter:UInt64;let nonce,ciphertext:[UInt8]}
 struct SendSecretRequest:Codable{let conversation_id,client_message_id:UUID;let epoch,counter:Int64;let nonce,ciphertext:[UInt8]}
-struct SecretMessage:Codable{let id:Int64;let conversation_id:UUID;let epoch:Int64;let sender_id,sender_device_id,client_message_id:UUID;let counter:Int64;let nonce,ciphertext:[UInt8];let created_at:String}
+struct SecretMessage:Codable,Equatable{let id:Int64;let conversation_id:UUID;let epoch:Int64;let sender_id,sender_device_id,client_message_id:UUID;let counter:Int64;let nonce,ciphertext:[UInt8];let created_at:String}
 struct SendSecretResponse:Codable{let message:SecretMessage;let deduplicated:Bool}
 struct StatusResponse:Codable{let status:String;let epoch:Int64}

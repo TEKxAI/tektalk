@@ -49,7 +49,8 @@ final class MVPFlowTests: XCTestCase {
         }
     }
     private func post(_ path: String, _ body: [String:Any]) throws -> Any {
-        var request=URLRequest(url:URL(string:"http://127.0.0.1:8080"+path)!)
+        let base=path=="/reply" ? "http://127.0.0.1:8766" : "http://127.0.0.1:8080"
+        var request=URLRequest(url:URL(string:base+path)!)
         request.httpMethod="POST";request.setValue("application/json",forHTTPHeaderField:"Content-Type")
         request.setValue("Bearer "+fixture["peer_token"]!,forHTTPHeaderField:"Authorization")
         request.httpBody=try JSONSerialization.data(withJSONObject:body)
@@ -107,6 +108,27 @@ final class MVPFlowTests: XCTestCase {
         XCTAssertTrue(received.waitForExistence(timeout:30))
         XCTAssertTrue(received.isHittable, "Reply is outside the visible chat")
         received.tap()
+        #if os(iOS)
+        // Exercise the visible opt-in with a real independent Rust Core peer.
+        tap("chat.secret")
+        for kind in ["one_to_one", "group"] {
+            let conversation=UUID().uuidString.lowercased()
+            fill("chat.conversation",conversation)
+            if kind=="group" { tap("chat.secret.group");fill("chat.secret.members",f["peer_id"]!) }
+            tap("chat.secret.enable")
+            Thread.sleep(forTimeInterval:2)
+            let outgoing="Encrypted "+kind+" from iOS"
+            let incoming="Verified encrypted "+kind+" reply"
+            fill("chat.draft",outgoing);tap("chat.send")
+            XCTAssertTrue(app.staticTexts[outgoing].firstMatch.waitForExistence(timeout:30))
+            _=try post("/reply",["conversation_id":conversation,"outgoing":outgoing,"incoming":incoming])
+            tap("chat.sync")
+            XCTAssertTrue(app.staticTexts[incoming].firstMatch.waitForExistence(timeout:30))
+            tap("chat.sync")
+            XCTAssertTrue(app.staticTexts[incoming].firstMatch.waitForExistence(timeout:30))
+            Thread.sleep(forTimeInterval:2)
+        }
+        #endif
         #if os(macOS)
         fill("chat.draft","Draft preserved across tabs")
         tap("tab.ai");tap("tab.me");tap("tab.message")

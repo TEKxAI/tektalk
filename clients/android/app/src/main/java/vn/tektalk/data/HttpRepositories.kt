@@ -78,15 +78,25 @@ class HttpSecretChatRepository internal constructor(private val api:HttpApi=Http
     private val json=Json{ignoreUnknownKeys=true}
     private var core:NativeCore.SecretDevice?=null
     private val policies=mutableMapOf<String,SecretPolicyDto>()
+    private val decrypted=mutableMapOf<Long,Pair<SecretMessageDto,Message>>()
+    private var owner:String?=null
 
-    private fun device(tokens:SessionTokens):NativeCore.SecretDevice = core ?: checkNotNull(NativeCore.secretDevice(tokens.userId,tokens.deviceId)){"Rust Secret Chat core is unavailable"}.also{core=it}
+    private fun device(tokens:SessionTokens):NativeCore.SecretDevice {
+        val identity=tokens.userId+":"+tokens.deviceId
+        if(owner!=identity){close();owner=identity}
+        return core ?: checkNotNull(NativeCore.secretDevice(tokens.userId,tokens.deviceId)){"Rust Secret Chat core is unavailable"}.also{core=it}
+    }
     private fun register(accessToken:String,tokens:SessionTokens){
         val bundle=json.decodeFromString<CoreBundleDto>(device(tokens).publicBundleJson)
         api.post<RegisterSecretBundleDto,ServerBundleDto>("/v1/secret/devices/register",RegisterSecretBundleDto(bundle.suites.single(),bundle.x25519_public,bundle.ml_kem_768_public),accessToken)
     }
-    override fun enable(accessToken:String,tokens:SessionTokens,conversationId:String,kind:String,memberIds:List<String>){
+    @Synchronized override fun registerDevice(accessToken:String,tokens:SessionTokens){register(accessToken,tokens)}
+    @Synchronized override fun enable(accessToken:String,tokens:SessionTokens,conversationId:String,kind:String,memberIds:List<String>){
         register(accessToken,tokens)
         val policy=api.post<EnableSecretDto,SecretPolicyDto>("/v1/secret/conversations/enable",EnableSecretDto(conversationId,kind,memberIds),accessToken)
+        publish(accessToken,tokens,conversationId,policy)
+    }
+    private fun publish(accessToken:String,tokens:SessionTokens,conversationId:String,policy:SecretPolicyDto){
         val serverBundles=api.post<ConversationDto,List<ServerBundleDto>>("/v1/secret/conversations/bundles",ConversationDto(conversationId),accessToken)
         check(serverBundles.any{it.user_id!=tokens.userId}){"Every peer must register a Secret Chat device before opt-in"}
         val coreBundles=serverBundles.map{CoreBundleDto(it.user_id,it.device_id,it.x25519_public,it.ml_kem_768_public,listOf(it.suite))}
@@ -99,25 +109,27 @@ class HttpSecretChatRepository internal constructor(private val api:HttpApi=Http
         register(accessToken,tokens)
         val policy=api.post<ConversationDto,SecretPolicyDto>("/v1/secret/conversations/policy",ConversationDto(conversationId),accessToken)
         val inbox=api.post<ConversationDto,List<KeyPacketDto>>("/v1/secret/keys/inbox",ConversationDto(conversationId),accessToken)
-        inbox.forEach{device(tokens).acceptKey(conversationId,it.sender_device_id,policy.kind,policy.epoch,json.encodeToString(it.packet))}
+        inbox.forEach{check(device(tokens).acceptKey(conversationId,it.sender_device_id,policy.kind,it.epoch,json.encodeToString(it.packet))){"Secret Chat key authentication failed"}}
+        publish(accessToken,tokens,conversationId,policy)
         policies[conversationId]=policy
         return policy
     }
-    override fun history(accessToken:String,tokens:SessionTokens,conversationId:String):List<Message>{
+    @Synchronized override fun history(accessToken:String,tokens:SessionTokens,conversationId:String):List<Message>{
         prepare(accessToken,tokens,conversationId)
         return api.post<ConversationDto,List<SecretMessageDto>>("/v1/secret/messages/history",ConversationDto(conversationId),accessToken).map{row->
+            decrypted[row.id]?.let{(wire,message)->check(wire==row){"Secret Chat history changed"};return@map message}
             val encrypted=CoreEncryptedDto(row.conversation_id,row.epoch,row.sender_device_id,row.counter,row.nonce,row.ciphertext)
             val body=device(tokens).decrypt(json.encodeToString(encrypted))
-            Message(row.id,row.conversation_id,row.sender_id,row.sender_id,row.client_message_id,body,row.created_at)
+            Message(row.id,row.conversation_id,row.sender_id,row.sender_id,row.client_message_id,body,row.created_at).also{decrypted[row.id]=row to it}
         }
     }
-    override fun send(accessToken:String,tokens:SessionTokens,draft:ChatDraft):Message{
-        val policy=policies[draft.conversationId] ?: prepare(accessToken,tokens,draft.conversationId)
+    @Synchronized override fun send(accessToken:String,tokens:SessionTokens,draft:ChatDraft):Message{
+        val policy=prepare(accessToken,tokens,draft.conversationId)
         val encrypted=json.decodeFromString<CoreEncryptedDto>(device(tokens).encrypt(draft.conversationId,policy.epoch,draft.text))
         val result=api.post<SendSecretDto,SendSecretResponseDto>("/v1/secret/messages/send",SendSecretDto(draft.conversationId,UUID.randomUUID().toString(),encrypted.epoch,encrypted.counter,encrypted.nonce,encrypted.ciphertext),accessToken).message
         return Message(result.id,result.conversation_id,result.sender_id,result.sender_id,result.client_message_id,draft.text,result.created_at)
     }
-    override fun close(){core?.close();core=null;policies.clear()}
+    @Synchronized override fun close(){core?.close();core=null;policies.clear();decrypted.clear();owner=null}
 }
 
 object ClientDependencies {

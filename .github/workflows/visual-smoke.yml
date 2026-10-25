@@ -23,8 +23,10 @@ jobs:
         with: {cache-on-failure: true}
       - uses: ankane/setup-postgres@v1
         with: {user: chat, database: chat}
-      - run: cargo build --release -p chat-server
+      - run: cargo build --release -p chat-server -p tektalk-client-core
       - run: python3 scripts/visual/scenario.py backend
+      - name: Verify real Secret Chat across accounts and devices
+        run: python3 scripts/visual/secret_peer.py verify
       - run: python3 scripts/visual/scenario.py prepare --platform web --fixture build/visual-fixtures/web.json
       - run: npm install --no-save playwright@1.55.1 && npx playwright install --with-deps chromium
       - name: Verify standalone authentication and session boundaries
@@ -45,6 +47,7 @@ jobs:
           path: |
             recordings/web.webm
             recordings/*-backend.json
+            recordings/secret-api-proof.json
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -65,7 +68,7 @@ jobs:
         with: {cache-on-failure: true}
       - uses: ankane/setup-postgres@v1
         with: {user: chat, database: chat}
-      - run: cargo build --release -p chat-server
+      - run: cargo build --release -p chat-server -p tektalk-client-core
       - run: python3 scripts/visual/scenario.py backend
       - run: python3 scripts/visual/scenario.py prepare --platform android --fixture build/visual-fixtures/android.json
       - run: cargo install cargo-ndk --locked
@@ -86,6 +89,7 @@ jobs:
           name: recording-android
           path: |
             recordings/android.mp4
+            recordings/android-secret.mp4
             recordings/android-*.json
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
@@ -178,4 +182,6 @@ jobs:
             recordings/published/recording-manifest.json
             recordings/*-flow.json
             recordings/*-backend.json
+            recordings/*-secret-*.json
+            recordings/secret-api-proof.json
           if-no-files-found: error

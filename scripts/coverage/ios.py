@@ -9,8 +9,6 @@ minimum = float(os.environ.get("IOS_COVERAGE_MINIMUM", "0.60"))
 excluded_suffixes = (
     "/ContentView.swift",       # declarative UI shell
     "/PluginContract.swift",    # protocol declarations have no executable logic
-    "/NativeCore.swift",        # thin C-ABI adapter; exercised by Rust/JNI/Apple build gates
-    "/SecretChatService.swift", # network/FFI orchestration; exercised by the API smoke test
 )
 
 report = json.load(sys.stdin)

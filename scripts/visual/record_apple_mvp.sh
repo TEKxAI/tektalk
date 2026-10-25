@@ -8,6 +8,12 @@ brew install xcodegen ffmpeg
 sudo DevToolsSecurity -enable
 if [ "$platform" = ios ]; then
 python3 scripts/visual/scenario.py prepare --platform ios --fixture clients/ios/TEKtalkFlowTests/fixture.json
+python3 scripts/visual/secret_peer.py serve --fixture clients/ios/TEKtalkFlowTests/fixture.json > recordings/ios-secret-peer.log 2>&1 &
+for attempt in $(seq 1 30); do
+  if curl --fail --silent http://127.0.0.1:8766/ >/dev/null; then break; fi
+  sleep 1
+done
+curl --fail --silent http://127.0.0.1:8766/ >/dev/null
 cd clients/ios
 xcodegen generate
 udid=$(xcrun simctl list devices available -j | python3 -c 'import json,sys;print(next(x["udid"] for xs in json.load(sys.stdin)["devices"].values() for x in xs if x["name"].startswith("iPhone") and x["isAvailable"]))')
@@ -25,7 +31,7 @@ stop_ios
 trap - EXIT
 cd "$root"
 python3 scripts/visual/scenario.py verify-existing --fixture clients/ios/TEKtalkFlowTests/fixture.json
-python3 -c 'import json,pathlib;pathlib.Path("recordings/ios-flow.json").write_text(json.dumps(dict(platform="ios",registration=True,logout=True,login=True,verification=True,sent_and_received_in_ui=True)))'
+python3 -c 'import json,pathlib;pathlib.Path("recordings/ios-flow.json").write_text(json.dumps(dict(platform="ios",registration=True,logout=True,login=True,verification=True,sent_and_received_in_ui=True,secret_one_to_one=True,secret_group=True,secret_history_reload=True)))'
 else
 python3 scripts/visual/scenario.py prepare --platform macos --fixture clients/macos/TEKtalkMacFlowTests/fixture.json
 python3 - <<'FIXTURE'

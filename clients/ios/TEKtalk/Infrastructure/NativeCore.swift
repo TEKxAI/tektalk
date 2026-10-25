@@ -24,7 +24,7 @@ final class NativeCore {
 
 final class SecretDevice {
     private var handle:UnsafeMutableRawPointer?
-    init?(userID:UUID,deviceID:UUID){handle=userID.uuidString.withCString{u in deviceID.uuidString.withCString{d in tektalkSecretCreate(u,d)}};if handle==nil{return nil}}
+    init?(userID:UUID,deviceID:UUID){handle=userID.uuidString.lowercased().withCString{u in deviceID.uuidString.lowercased().withCString{d in tektalkSecretCreate(u,d)}};if handle==nil{return nil}}
     deinit{tektalkSecretDestroy(handle)}
     private func take(_ value:UnsafeMutablePointer<CChar>?)->String?{guard let value else{return nil};defer{tektalkStringDestroy(value)};return String(cString:value)}
     var publicBundleJSON:String?{take(tektalkSecretBundle(handle))}

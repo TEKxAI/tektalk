@@ -175,9 +175,11 @@ pub unsafe extern "C" fn tektalk_secret_begin_epoch_json(
         unsafe { device.as_mut() }, unsafe { utf8(conversation_id) }, unsafe { utf8(kind) }, unsafe { utf8(bundles_json) }
     ) else { return std::ptr::null_mut(); };
     let (Some(policy), Ok(bundles)) = (secret_policy(kind, epoch), serde_json::from_str::<Vec<secret_chat::DeviceBundle>>(bundles_json)) else { return std::ptr::null_mut(); };
-    let sender = secret_chat::SenderKey::generate(epoch);
-    let Ok(packets) = secret_chat::distribute_sender_key(conversation_id, &sender, &bundles, &policy) else { return std::ptr::null_mut(); };
-    device.senders.insert((conversation_id.into(), epoch), sender);
+    // Repeated opt-in or device discovery must not replace a live epoch key or
+    // reset its counter: old messages must remain decryptable.
+    let sender = device.senders.entry((conversation_id.into(), epoch))
+        .or_insert_with(|| secret_chat::SenderKey::generate(epoch));
+    let Ok(packets) = secret_chat::distribute_sender_key(conversation_id, sender, &bundles, &policy) else { return std::ptr::null_mut(); };
     c_string(serde_json::to_string(&packets).unwrap_or_default())
 }
 

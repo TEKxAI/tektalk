@@ -220,7 +220,7 @@ jobs:
       - name: Start complete local stack
         run: docker compose up --build -d --wait --wait-timeout 600
       - name: Run API smoke test
-        run: ./scripts/smoke-test.sh
+        run: sh scripts/smoke-test.sh
       - name: Show service state and logs on failure
         if: failure()
         run: |
