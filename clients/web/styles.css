@@ -16,6 +16,7 @@ input,textarea{width:100%;min-width:0;border:1px solid var(--line);border-radius
 .auth-content{position:relative;display:grid;place-items:center;padding:92px 50px 50px;min-width:0}
 #authPreferences{position:absolute;top:24px;right:24px}.auth-card{width:min(420px,100%)}.auth-card h2{font-size:32px}.auth-card>p{color:var(--muted);margin:12px 0 24px}
 .auth-card label{margin:16px 0}.auth-card input{min-height:48px}.auth-card .primary{width:100%;margin-top:8px}
+.auth-card>#qrLoginButton{width:100%;margin-top:10px}.qr-login{text-align:center;padding:12px 0}.qr-login p{margin:8px 0 12px;color:var(--muted)}.qr-code{width:280px;max-width:100%;margin:0 auto 12px;padding:10px;border:1px solid var(--line);border-radius:16px;background:#fff}.qr-code svg{display:block;width:100%;height:auto}
 .auth-switch{margin-top:20px}.auth-switch button{border:0;background:none;color:var(--text);text-decoration:underline;text-underline-offset:4px;padding:10px 0;min-height:44px;text-align:left}
 .form-error{color:var(--tek-error);min-height:20px;font-size:13px;overflow-wrap:anywhere}
 .shell{height:100dvh;overflow:hidden}.workspace{height:100%;display:grid;grid-template-columns:var(--tek-layout-sidebar) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
