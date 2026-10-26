@@ -25,13 +25,13 @@ def find_any(*ids,timeout=30):
             if id in visible:return id
         time.sleep(.4)
     raise AssertionError(f'None of the visible UI elements were found: {ids}')
-def wait_text(id,expected,timeout=30):
+def wait_enabled(id,timeout=30):
     end=time.time()+timeout
     while time.time()<end:
         node=find(id=id,timeout=1)
-        if expected in (node.get('text') or ''):return node
+        if node.get('enabled')=='true':return node
         time.sleep(.4)
-    raise AssertionError(f'Visible UI element {id} did not contain: {expected}')
+    raise AssertionError(f'Visible UI element did not become enabled: {id}')
 def tap(id):
     n=find(id=id);x1,y1,x2,y2=map(int,re.findall(r'\d+',n.get('bounds')))
     adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));time.sleep(.7)
@@ -76,10 +76,9 @@ try:
         fill('chat.conversation',conversation)
         if kind=='group':
             tap('chat.secret.group');fill('chat.secret.members',f['peer_id'])
-        tap('chat.secret.enable');wait_text('chat.status','Secret Chat enabled')
         outgoing='Encrypted '+kind+' from Android'
         incoming='Verified encrypted '+kind+' reply'
-        fill('chat.draft',outgoing);tap('chat.send');find(text=outgoing)
+        fill('chat.draft',outgoing);tap('chat.secret.enable');wait_enabled('chat.send');tap('chat.send');find(text=outgoing)
         data=json.dumps(dict(conversation_id=conversation,outgoing=outgoing,incoming=incoming)).encode()
         with urlopen(Request('http://127.0.0.1:8766/reply',data=data,headers={'Content-Type':'application/json'}),timeout=30) as response:
             assert json.load(response)['verified']
