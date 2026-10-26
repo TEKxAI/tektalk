@@ -17,6 +17,13 @@ def find(id=None,text=None,timeout=30):
             if (id and n.get('resource-id')==id) or (text and n.get('text')==text):return n
         time.sleep(.4)
     raise AssertionError(f'Visible UI element not found: {id or text}')
+def wait_text(id,expected,timeout=30):
+    end=time.time()+timeout
+    while time.time()<end:
+        node=find(id=id,timeout=1)
+        if expected in (node.get('text') or ''):return node
+        time.sleep(.4)
+    raise AssertionError(f'Visible UI element {id} did not contain: {expected}')
 def tap(id):
     n=find(id=id);x1,y1,x2,y2=map(int,re.findall(r'\d+',n.get('bounds')))
     adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));time.sleep(.7)
@@ -59,7 +66,7 @@ try:
         fill('chat.conversation',conversation)
         if kind=='group':
             tap('chat.secret.group');fill('chat.secret.members',f['peer_id'])
-        tap('chat.secret.enable');pause()
+        tap('chat.secret.enable');wait_text('chat.status','Secret Chat enabled')
         outgoing='Encrypted '+kind+' from Android'
         incoming='Verified encrypted '+kind+' reply'
         fill('chat.draft',outgoing);tap('chat.send');find(text=outgoing)
