@@ -17,6 +17,14 @@ def find(id=None,text=None,timeout=30):
             if (id and n.get('resource-id')==id) or (text and n.get('text')==text):return n
         time.sleep(.4)
     raise AssertionError(f'Visible UI element not found: {id or text}')
+def find_any(*ids,timeout=30):
+    end=time.time()+timeout
+    while time.time()<end:
+        visible={n.get('resource-id') for n in nodes().iter('node')}
+        for id in ids:
+            if id in visible:return id
+        time.sleep(.4)
+    raise AssertionError(f'None of the visible UI elements were found: {ids}')
 def wait_text(id,expected,timeout=30):
     end=time.time()+timeout
     while time.time()<end:
@@ -44,7 +52,9 @@ try:
     pause();tap('auth.submit');find(id='tab.2');pause()
     tap('tab.2');tap('auth.logout');find(id='auth.phone');pause()
     fill('auth.phone',f['phone']);fill('auth.password',f['password']);pause();tap('auth.submit')
-    find(id='auth.answer');pause();fill('auth.answer',f['answer']);tap('auth.submit');find(id='chat.open');pause()
+    destination=find_any('auth.answer','chat.open')
+    if destination=='auth.answer':pause();fill('auth.answer',f['answer']);tap('auth.submit')
+    find(id='chat.open');pause()
     tap('chat.open');fill('chat.conversation',f['conversation']);fill('chat.recipient',f['peer_id']);fill('chat.draft',f['outgoing']);pause();tap('chat.send');find(text=f['outgoing']);pause()
     verify_reply(f);tap('chat.sync');find(text=f['incoming']);pause();
     if record.poll() is not None:raise RuntimeError('Screen recording ended before the flow completed')
