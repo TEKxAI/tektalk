@@ -74,7 +74,7 @@ class HttpAuthRepository internal constructor(private val api:HttpApi=HttpApi())
 }
 
 class HttpDeviceLinkRepository internal constructor(private val api:HttpApi=HttpApi()) {
-    fun approve(accessToken:String,linkId:String,secret:String)=api.post<DeviceLinkProofDto,StatusDto>("/v1/auth/device-link/approve",DeviceLinkProofDto(linkId,secret),accessToken)
+    fun approve(accessToken:String,linkId:String,secret:String) { api.post<DeviceLinkProofDto,StatusDto>("/v1/auth/device-link/approve",DeviceLinkProofDto(linkId,secret),accessToken) }
 }
 
 class HttpChatRepository internal constructor(private val api:HttpApi=HttpApi()):ChatRepository {
