@@ -35,7 +35,9 @@ import vn.tektalk.domain.*
 
 class MainActivity:ComponentActivity(){override fun onCreate(state:Bundle?){super.onCreate(state);ClientDependencies.initialize(this);setContent{TEKtalkTheme{TEKtalkApp()}}}}
 @Composable private fun TEKtalkTheme(content:@Composable ()->Unit){MaterialTheme(colorScheme=TekDesign.colors(isSystemInDarkTheme()),content=content)}
-@Composable fun TEKtalkApp(){var tokens by remember{mutableStateOf<SessionTokens?>(null)};Surface(Modifier.fillMaxSize()){Box(Modifier.semantics{testTagsAsResourceId=true}){if(tokens==null)AuthFlow{tokens=it}else HostTabs(tokens!!){tokens=null}}}}
+@Composable fun TEKtalkApp(){var tokens by remember{mutableStateOf<SessionTokens?>(null)};val activity=LocalContext.current as? ComponentActivity;val link=activity?.intent?.data
+ LaunchedEffect(tokens?.deviceId,link){val session=tokens;if(session!=null&&link?.scheme=="tektalk"&&link.host=="device-link"){val id=link.getQueryParameter("id");val secret=link.getQueryParameter("secret");if(id!=null&&secret!=null){runCatching{withContext(Dispatchers.IO){ClientDependencies.deviceLink.approve(session.accessToken,id,secret)}};activity.intent.data=null}}}
+ Surface(Modifier.fillMaxSize()){Box(Modifier.semantics{testTagsAsResourceId=true}){if(tokens==null)AuthFlow{tokens=it}else HostTabs(tokens!!){tokens=null}}}}
 
 @Composable private fun AuthFlow(onAuthenticated:(SessionTokens)->Unit){
  val defaultQuestion=stringResource(R.string.default_security_question);var mode by remember{mutableStateOf(AuthMode.Login)};var phone by remember{mutableStateOf("+84")};var password by remember{mutableStateOf("")};var displayName by remember{mutableStateOf("")};var question by remember{mutableStateOf(defaultQuestion)};var answer by remember{mutableStateOf("")};var challenge by remember{mutableStateOf<String?>(null)};var serverQuestion by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)};val scope=rememberCoroutineScope();val auth=remember{ClientDependencies.auth}

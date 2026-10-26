@@ -5,6 +5,10 @@ struct LoginRequest: Codable { let phone, password: String; let device_id: UUID?
 struct VerifyDeviceRequest: Codable { let challenge_id: UUID; let answer: String }
 struct Tokens: Codable { let access_token, refresh_token: String; let user_id, device_id: UUID }
 struct LoginResponse: Codable { let status: String; let tokens: Tokens?; let challenge_id: UUID?; let question: String? }
+struct DeviceLinkStart: Codable { let device_name, platform: String }
+struct DeviceLinkProof: Codable { let link_id: UUID; let secret: String }
+struct DeviceLinkStarted: Codable { let link_id: UUID; let secret, qr_payload, qr_svg, expires_at: String }
+struct DeviceLinkPoll: Codable { let status: String; let tokens: Tokens? }
 struct HistoryRequest: Codable { let conversation_id: UUID; let before_message_id: Int64?; let limit: Int }
 struct SendMessageRequest: Codable { let conversation_id, recipient_id, client_message_id: UUID; let text: String }
 struct ChatMessage: Codable, Identifiable, Equatable { let id: Int64; let conversation_id, sender_id, recipient_id, client_message_id: UUID; let body, created_at: String }

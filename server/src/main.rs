@@ -29,6 +29,7 @@ async fn main()->anyhow::Result<()>{
     let app=Router::new()
         .route("/healthz",get(||async{"ok"})).route("/readyz",get(ready))
         .route("/v1/auth/register",post(auth::register)).route("/v1/auth/login",post(auth::login)).route("/v1/auth/device/verify",post(auth::verify_device)).route("/v1/auth/password/reset/request",post(auth::request_reset)).route("/v1/auth/password/reset/confirm",post(auth::reset_password)).route("/v1/auth/password/change",post(auth::change_password))
+        .route("/v1/auth/device-link/start",post(auth::start_device_link)).route("/v1/auth/device-link/approve",post(auth::approve_device_link)).route("/v1/auth/device-link/poll",post(auth::poll_device_link))
         .route("/v1/chat/messages/send",post(chat_http::send)).route("/v1/chat/messages/history",post(chat_http::history))
         .route("/v1/secret/devices/register",post(secret_http::register_bundle))
         .route("/v1/secret/conversations/enable",post(secret_http::enable))

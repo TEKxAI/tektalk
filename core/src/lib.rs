@@ -105,7 +105,7 @@ pub struct TektalkAccountStore {
 pub struct TektalkSecretDevice {
     keys: secret_chat::DeviceKeyPair,
     senders: HashMap<(String, u64), secret_chat::SenderKey>,
-    receivers: HashMap<(String, u64, String), secret_chat::SenderKey>,
+    receivers: HashMap<(String, u64, u64, String), secret_chat::SenderKey>,
     replay: secret_chat::ReplayGuard,
 }
 
@@ -116,8 +116,22 @@ struct SecretSnapshot {
     x25519: [u8; 32],
     ml_kem_seed: Vec<u8>,
     senders: Vec<(String, u64, secret_chat::SenderKey)>,
-    receivers: Vec<(String, u64, String, secret_chat::SenderKey)>,
-    replay: Vec<(String, String, u64, Vec<u64>)>,
+    receivers: Vec<ReceiverSnapshot>,
+    replay: Vec<ReplaySnapshot>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+enum ReceiverSnapshot {
+    V2((String, u64, u64, String, secret_chat::SenderKey)),
+    V1((String, u64, String, secret_chat::SenderKey)),
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+enum ReplaySnapshot {
+    V2((String, String, u64, u64, Vec<u64>)),
+    V1((String, String, u64, Vec<u64>)),
 }
 
 /// Exports secret state for platform-protected storage, never for the server.
@@ -130,8 +144,8 @@ pub unsafe extern "C" fn tektalk_secret_snapshot_json(device: *const TektalkSecr
     let mut snapshot = SecretSnapshot {
         version: 1, bundle, x25519, ml_kem_seed,
         senders: device.senders.iter().map(|((c, e), k)| (c.clone(), *e, k.clone())).collect(),
-        receivers: device.receivers.iter().map(|((c, e, s), k)| (c.clone(), *e, s.clone(), k.clone())).collect(),
-        replay: device.replay.export(),
+        receivers: device.receivers.iter().map(|((c, e, g, s), k)| ReceiverSnapshot::V2((c.clone(), *e, *g, s.clone(), k.clone()))).collect(),
+        replay: device.replay.export().into_iter().map(ReplaySnapshot::V2).collect(),
     };
     let json = serde_json::to_string(&snapshot);
     use zeroize::Zeroize;
@@ -154,8 +168,14 @@ pub unsafe extern "C" fn tektalk_secret_restore_json(snapshot_json: *const std::
     Box::into_raw(Box::new(TektalkSecretDevice {
         keys,
         senders: snapshot.senders.into_iter().map(|(c,e,k)| ((c,e),k)).collect(),
-        receivers: snapshot.receivers.into_iter().map(|(c,e,s,k)| ((c,e,s),k)).collect(),
-        replay: secret_chat::ReplayGuard::restore(snapshot.replay),
+        receivers: snapshot.receivers.into_iter().map(|row| match row {
+            ReceiverSnapshot::V2((c,e,g,s,k)) => ((c,e,g,s),k),
+            ReceiverSnapshot::V1((c,e,s,k)) => ((c,e,1,s),k),
+        }).collect(),
+        replay: secret_chat::ReplayGuard::restore(snapshot.replay.into_iter().map(|row| match row {
+            ReplaySnapshot::V2(value) => value,
+            ReplaySnapshot::V1((c,s,e,counters)) => (c,s,e,1,counters),
+        }).collect()),
     }))
 }
 
@@ -229,6 +249,7 @@ pub unsafe extern "C" fn tektalk_secret_begin_epoch_json(
     // reset its counter: old messages must remain decryptable.
     let sender = device.senders.entry((conversation_id.into(), epoch))
         .or_insert_with(|| secret_chat::SenderKey::generate(epoch));
+    if sender.pq_rekey_due() { sender.pq_rekey(); }
     let Ok(packets) = secret_chat::distribute_sender_key(conversation_id, sender, &bundles, &policy) else { return std::ptr::null_mut(); };
     c_string(serde_json::to_string(&packets).unwrap_or_default())
 }
@@ -251,7 +272,8 @@ pub unsafe extern "C" fn tektalk_secret_accept_key_json(
     ) else { return 0; };
     let (Some(policy), Ok(wrapped)) = (secret_policy(kind, epoch), serde_json::from_str::<secret_chat::WrappedSenderKey>(wrapped_json)) else { return 0; };
     let Ok(sender) = secret_chat::unwrap_sender_key(conversation_id, &device.keys, &wrapped, &policy) else { return 0; };
-    device.receivers.insert((conversation_id.into(), epoch, sender_device_id.into()), sender);
+    let generation=wrapped.generation;
+    device.receivers.entry((conversation_id.into(), epoch, generation, sender_device_id.into())).or_insert(sender);
     1
 }
 
@@ -282,10 +304,10 @@ pub unsafe extern "C" fn tektalk_secret_decrypt_json(device: *mut TektalkSecretD
     let (Some(device), Some(message_json)) = (unsafe { device.as_mut() }, unsafe { utf8(message_json) }) else { return std::ptr::null_mut(); };
     let Ok(message) = serde_json::from_str::<secret_chat::EncryptedMessage>(message_json) else { return std::ptr::null_mut(); };
     let plaintext = if message.sender_device_id == device.keys.bundle.device_id {
-        let Some(sender) = device.senders.get(&(message.conversation_id.clone(), message.epoch)) else { return std::ptr::null_mut(); };
+        let Some(sender) = device.senders.get_mut(&(message.conversation_id.clone(), message.epoch)) else { return std::ptr::null_mut(); };
         sender.decrypt(&message, &mut device.replay)
     } else {
-        let Some(sender) = device.receivers.get(&(message.conversation_id.clone(), message.epoch, message.sender_device_id.clone())) else { return std::ptr::null_mut(); };
+        let Some(sender) = device.receivers.get_mut(&(message.conversation_id.clone(), message.epoch, message.generation, message.sender_device_id.clone())) else { return std::ptr::null_mut(); };
         sender.decrypt(&message, &mut device.replay)
     };
     let Ok(plaintext) = plaintext else { return std::ptr::null_mut(); };

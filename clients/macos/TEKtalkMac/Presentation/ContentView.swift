@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreImage.CIFilterBuiltins
 
 private func L(_ key: String) -> String { NSLocalizedString(key, comment: "") }
 
@@ -14,20 +15,25 @@ private struct AuthView: View {
     @State private var name = ""
     @State private var question = L("auth.default_security_question")
     @State private var answer = ""
+    @State private var deviceLink: DeviceLinkStarted?
     var body: some View {
         HStack(spacing: 0) {
             ZStack { LinearGradient(colors: [TekDesign.primary, TekDesign.primary], startPoint: .topLeading, endPoint: .bottomTrailing); VStack(alignment: .leading, spacing: 16) { Text("TEKtalk").font(.system(size: 52, weight: .bold)); Text(L("auth.hero")).font(.title2); Spacer(); Label(RustCore.shared.isAvailable ? L("core.connected") : L("core.fallback"), systemImage: "checkmark.shield") }.foregroundStyle(TekDesign.onPrimary).padding(52) }.frame(width: 410)
             Form {
                 Text(session.mode == .register ? L("auth.create_account") : session.mode == .verify ? session.challengeQuestion : L("auth.sign_in")).font(.largeTitle.bold())
-                if session.mode != .verify { TextField(L("auth.phone_e164"), text: $phone).accessibilityIdentifier("auth.phone"); if session.mode == .register { TextField(L("auth.display_name"), text: $name).accessibilityIdentifier("auth.name") }; SecureField(L("auth.password"), text: $password).accessibilityIdentifier("auth.password") }
+                if let link=deviceLink { if let image=qrImage(link.qr_payload){Image(nsImage:image).interpolation(.none).resizable().frame(width:260,height:260).accessibilityIdentifier("auth.qr")};Text("Scan with TEKtalk on your phone, verify this Mac, then approve.").foregroundStyle(TekDesign.muted);Button("Cancel"){deviceLink=nil}.buttonStyle(.bordered) }
+                else if session.mode != .verify { TextField(L("auth.phone_e164"), text: $phone).accessibilityIdentifier("auth.phone"); if session.mode == .register { TextField(L("auth.display_name"), text: $name).accessibilityIdentifier("auth.name") }; SecureField(L("auth.password"), text: $password).accessibilityIdentifier("auth.password") }
                 if session.mode == .register { TextField(L("auth.security_question"), text: $question).accessibilityIdentifier("auth.question"); SecureField(L("auth.answer"), text: $answer).accessibilityIdentifier("auth.answer") }
                 if session.mode == .verify { SecureField(L("auth.security_answer"), text: $answer).accessibilityIdentifier("auth.answer") }
                 if !session.error.isEmpty { Text(session.error).foregroundStyle(TekDesign.error) }
-                Button { Task { await submit() } } label: { Text(session.busy ? L("auth.working") : session.mode == .login ? L("auth.sign_in") : session.mode == .register ? L("auth.sign_up") : L("auth.verify_device")).frame(maxWidth: .infinity) }.accessibilityIdentifier("auth.submit").buttonStyle(TekPrimaryButtonStyle()).disabled(session.busy)
-                if session.mode != .verify { Button(session.mode == .login ? L("auth.switch_to_register") : L("auth.switch_to_login")) { session.mode = session.mode == .login ? .register : .login; session.error = "" }.accessibilityIdentifier("auth.toggle").buttonStyle(.link) }
+                if deviceLink == nil { Button { Task { await submit() } } label: { Text(session.busy ? L("auth.working") : session.mode == .login ? L("auth.sign_in") : session.mode == .register ? L("auth.sign_up") : L("auth.verify_device")).frame(maxWidth: .infinity) }.accessibilityIdentifier("auth.submit").buttonStyle(TekPrimaryButtonStyle()).disabled(session.busy) }
+                if session.mode == .login && deviceLink == nil { Button("Sign in with QR") { Task { await startQr() } }.accessibilityIdentifier("auth.qr.start").buttonStyle(.bordered) }
+                if session.mode != .verify && deviceLink == nil { Button(session.mode == .login ? L("auth.switch_to_register") : L("auth.switch_to_login")) { session.mode = session.mode == .login ? .register : .login; session.error = "" }.accessibilityIdentifier("auth.toggle").buttonStyle(.link) }
             }.formStyle(.grouped).scrollContentBackground(.hidden).background(TekDesign.surface).padding(50).frame(maxWidth: .infinity)
         }
     }
+    private func qrImage(_ payload:String)->NSImage?{let filter=CIFilter.qrCodeGenerator();filter.message=Data(payload.utf8);filter.correctionLevel="M";guard let output=filter.outputImage?.transformed(by:CGAffineTransform(scaleX:10,y:10)) else{return nil};let rep=NSCIImageRep(ciImage:output);let image=NSImage(size:rep.size);image.addRepresentation(rep);return image}
+    @MainActor private func startQr() async { session.error="";session.busy=true;defer{session.busy=false};do{let link=try await session.api.startDeviceLink();deviceLink=link;while deviceLink?.link_id==link.link_id{let result=try await session.api.pollDeviceLink(link);if let tokens=result.tokens{deviceLink=nil;session.tokens=tokens;return};try await Task.sleep(for:.seconds(1.5))}}catch{deviceLink=nil;session.error=error.localizedDescription} }
     @MainActor private func submit() async {
         if let error = Validation.auth(mode: session.mode, phone: phone, password: password, name: name, question: question, answer: answer) { session.error = error; return }
         session.busy = true; session.error = ""; defer { session.busy = false }

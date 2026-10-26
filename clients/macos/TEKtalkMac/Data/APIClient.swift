@@ -24,6 +24,8 @@ actor APIClient {
         try await post("v1/auth/login", body: LoginRequest(phone: phone, password: password, device_id: nil, device_name: Host.current().localizedName ?? "Mac"))
     }
     func verify(challenge: UUID, answer: String) async throws -> Tokens { try await post("v1/auth/device/verify", body: VerifyDeviceRequest(challenge_id: challenge, answer: answer)) }
+    func startDeviceLink() async throws -> DeviceLinkStarted { try await post("v1/auth/device-link/start", body: DeviceLinkStart(device_name: Host.current().localizedName ?? "Mac", platform: "macos")) }
+    func pollDeviceLink(_ link:DeviceLinkStarted) async throws -> DeviceLinkPoll { try await post("v1/auth/device-link/poll", body: DeviceLinkProof(link_id:link.link_id,secret:link.secret)) }
     func history(token: String, conversation: UUID) async throws -> [ChatMessage] { try await post("v1/chat/messages/history", body: HistoryRequest(conversation_id: conversation, before_message_id: nil, limit: 50), token: token) }
     func send(token: String, conversation: UUID, recipient: UUID, text: String) async throws -> SendMessageResponse { try await post("v1/chat/messages/send", body: SendMessageRequest(conversation_id: conversation, recipient_id: recipient, client_message_id: UUID(), text: text), token: token) }
 }
