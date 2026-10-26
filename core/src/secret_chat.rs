@@ -298,23 +298,28 @@ impl SenderKey {
     pub fn decrypt(&mut self, message: &EncryptedMessage, replay: &mut ReplayGuard) -> Result<Vec<u8>> {
         if message.epoch != self.epoch || message.generation != self.generation { return Err(Error::StaleEpoch); }
         if message.counter >= self.next_receive_counter.saturating_add(MAX_SKIP) { return Err(Error::Replay); }
-        let mut message_key = if let Some(key) = self.skipped_message_keys.remove(&message.counter) { key } else {
-            if message.counter < self.next_receive_counter { return Err(Error::Replay); }
+        // Advance a staged copy. An unauthenticated packet must never consume
+        // a chain/message key or a forged packet could permanently desync the
+        // receiver before the authentic packet arrives.
+        let mut staged = self.clone();
+        let mut message_key = if let Some(key) = staged.skipped_message_keys.remove(&message.counter) { key } else {
+            if message.counter < staged.next_receive_counter { return Err(Error::Replay); }
             let mut selected = None;
-            while self.next_receive_counter <= message.counter {
-                let counter = self.next_receive_counter;
-                let (key, next) = Self::derive_step(&self.receive_chain_key, counter)?;
-                self.receive_chain_key = next; self.next_receive_counter += 1;
-                if counter == message.counter { selected = Some(key); } else { self.skipped_message_keys.insert(counter, key); }
+            while staged.next_receive_counter <= message.counter {
+                let counter = staged.next_receive_counter;
+                let (key, next) = Self::derive_step(&staged.receive_chain_key, counter)?;
+                staged.receive_chain_key = next; staged.next_receive_counter += 1;
+                if counter == message.counter { selected = Some(key); } else { staged.skipped_message_keys.insert(counter, key); }
             }
             selected.ok_or(Error::InvalidKey)?
         };
         let aad = message_aad(&message.conversation_id, message.epoch, message.generation, &message.sender_device_id, message.counter);
         let plaintext = Aes256GcmSiv::new((&message_key).into())
-            .decrypt(Nonce::from_slice(&message.nonce), Payload { msg: &message.ciphertext, aad: &aad })
-            .map_err(|_| Error::Authentication)?;
+            .decrypt(Nonce::from_slice(&message.nonce), Payload { msg: &message.ciphertext, aad: &aad });
         message_key.zeroize();
+        let plaintext = plaintext.map_err(|_| Error::Authentication)?;
         replay.accept(&message.conversation_id, &message.sender_device_id, message.epoch, message.generation, message.counter)?;
+        *self = staged;
         Ok(plaintext)
     }
 }
@@ -450,6 +455,17 @@ mod tests {
         message.conversation_id = "other-group".into();
         let mut receiver = SenderKey::from_bytes(sender.receive_chain_key, 1);
         assert_eq!(receiver.decrypt(&message, &mut ReplayGuard::default()), Err(Error::Authentication));
+    }
+
+    #[test]
+    fn forged_ciphertext_does_not_advance_the_receive_chain() {
+        let mut sender = SenderKey::generate(1);
+        let mut receiver = SenderKey::from_bytes(sender.receive_chain_key, 1);
+        let authentic = sender.encrypt("chat-1", "alice-phone", b"hello").unwrap();
+        let mut forged = authentic.clone(); forged.ciphertext[0] ^= 1;
+        let mut replay = ReplayGuard::default();
+        assert_eq!(receiver.decrypt(&forged, &mut replay), Err(Error::Authentication));
+        assert_eq!(receiver.decrypt(&authentic, &mut replay).unwrap(), b"hello");
     }
 
     #[test]
