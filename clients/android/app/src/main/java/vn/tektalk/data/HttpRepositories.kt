@@ -83,7 +83,9 @@ class HttpChatRepository internal constructor(private val api:HttpApi=HttpApi())
 }
 
 class HttpSecretChatRepository internal constructor(private val api:HttpApi=HttpApi(),private val storage:SecretStateStorage?=null):SecretChatRepository {
-    private val json=Json{ignoreUnknownKeys=true}
+    // Level 3 generation is authenticated wire metadata. Generation 1 equals
+    // the Kotlin default, but it must still be present in published packets.
+    private val json=Json{ignoreUnknownKeys=true;encodeDefaults=true}
     private var core:NativeCore.SecretDevice?=null
     private val policies=mutableMapOf<String,SecretPolicyDto>()
     private val decrypted=mutableMapOf<Long,Pair<SecretMessageDto,Message>>()
