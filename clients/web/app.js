@@ -6,12 +6,13 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const state = {
   locale: localStorage.getItem('tektalk.locale') === 'en' ? 'en' : 'vi',
   theme: localStorage.getItem('tektalk.theme') || 'system',
-  mode: 'login', challengeId: null, challengeQuestion: '', tokens: null, busy: false, sending: false, online: false,
+  mode: 'login', challengeId: null, challengeQuestion: '', tokens: null, busy: false, sending: false, online: false, qr: false,
 };
 const t = key => translations[state.locale][key] || key;
 const recentConversations = new Map();
 let sessionEpoch = 0;
 let authController;
+let qrPollTimer;
 const queryApi = new URLSearchParams(location.search).get('api');
 const apiBase = (queryApi || localStorage.getItem('tektalk.api') || (location.port === '5173' ? 'http://localhost:8080' : location.origin)).replace(/\/$/, '');
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
@@ -72,7 +73,7 @@ function renderAuthForm() {
   $('#authTitle').removeAttribute('data-i18n');
   $('#authIntro').textContent = t(verify ? 'verifyIntro' : register ? 'registerIntro' : 'authIntro');
   $('#authIntro').removeAttribute('data-i18n');
-  $('#authCredentials').hidden = verify;
+  $('#authCredentials').hidden = verify || state.qr;
   $('#authCredentials').disabled = verify || state.busy;
   for (const id of ['displayNameField', 'questionField', 'answerField']) {
     const field = $('#' + id); field.hidden = !register;
@@ -88,15 +89,40 @@ function renderAuthForm() {
   $('#authSubmit').textContent = t(state.busy ? 'working' : verify ? 'verifyDevice' : register ? 'register' : 'login');
   $('#authSubmit').removeAttribute('data-i18n');
   $('#authSubmit').disabled = state.busy;
+  $('#authSubmit').hidden = state.qr;
+  $('#qrLoginButton').hidden = state.qr || register || verify;
+  $('#qrLogin').hidden = !state.qr;
   $('#authForm').setAttribute('aria-busy', String(state.busy));
   $('[data-auth-mode="register"]').hidden = register || verify;
   $('[data-auth-mode="login"]').hidden = !register && !verify;
 }
 function cancelAuthentication() {
   sessionEpoch++; authController?.abort(); authController = null; state.busy = false;
+  clearTimeout(qrPollTimer); qrPollTimer = null;
 }
+
+async function startQrLogin() {
+  cancelAuthentication(); const epoch = sessionEpoch; state.qr = true; state.busy = true; renderAuthForm(); $('#authError').textContent='';
+  try {
+    const link = await request('/v1/auth/device-link/start', {method:'POST', body:JSON.stringify({device_name:'TEKtalk Web · '+(navigator.platform||'Browser'), platform:'web'})});
+    if (epoch !== sessionEpoch) return;
+    $('#qrCode').innerHTML = link.qr_svg;
+    const poll = async () => {
+      if (epoch !== sessionEpoch || !state.qr) return;
+      try {
+        const result = await request('/v1/auth/device-link/poll', {method:'POST', body:JSON.stringify({link_id:link.link_id,secret:link.secret})});
+        if (result.status === 'approved') { state.qr=false; enterSession(result.tokens); return; }
+      } catch (error) { if (epoch === sessionEpoch) $('#authError').textContent = error.message; return; }
+      qrPollTimer=setTimeout(poll,1500);
+    }; poll();
+  } catch(error) { if(epoch===sessionEpoch){state.qr=false;$('#authError').textContent=error.message;} }
+  finally { if(epoch===sessionEpoch){state.busy=false;renderAuthForm();} }
+}
+
+function stopQrLogin(){ cancelAuthentication(); state.qr=false; $('#qrCode').replaceChildren(); renderAuthForm(); }
 function setAuthMode(mode) {
   cancelAuthentication();
+  state.qr = false;
   state.mode = mode === 'register' ? 'register' : 'login';
   state.challengeId = null; state.challengeQuestion = '';
   $('[name="password"]').value = ''; $('[name="challenge_answer"]').value = '';
@@ -269,6 +295,8 @@ $('#themeButton').addEventListener('click', () => setTheme({system: 'light', lig
 $('#languageButton').addEventListener('click', () => { state.locale = state.locale === 'vi' ? 'en' : 'vi'; localStorage.setItem('tektalk.locale', state.locale); translate(); });
 $$('[data-auth-mode]').forEach(button => button.addEventListener('click', () => setAuthMode(button.dataset.authMode)));
 $('#authForm').addEventListener('submit', authenticate);
+$('#qrLoginButton').addEventListener('click', startQrLogin);
+$('#cancelQrButton').addEventListener('click', stopQrLogin);
 $('#chatForm').addEventListener('submit', event => { event.preventDefault(); syncMessages().catch(showChatError); });
 $$('.nav-item').forEach(button => button.addEventListener('click', () => activateTab(button.dataset.tab)));
 $('#messageForm').addEventListener('submit', sendMessage);

@@ -6,6 +6,8 @@ This is an independent educational reference implementation for TEK, not the pro
 
 The selected protocol, client, server, sync, delivery and media patterns are tracked in `docs/tektalk-engineering.md`. The AES-IGE/KDF codec is the active realtime encryption path and is covered by server tests and native client builds.
 
+- [Secret Chat Level 3 architecture](docs/secret-chat-level3-architecture.md) — hybrid PQ ratchet, multi-device key distribution, and desktop QR linking.
+
 ## Included vertical slice
 
 - Register by phone number, set password, and store a security question/answer

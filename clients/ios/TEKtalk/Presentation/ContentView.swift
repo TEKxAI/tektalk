@@ -4,7 +4,8 @@ private func L(_ key: String) -> String { NSLocalizedString(key, comment: "") }
 
 struct ContentView: View {
     @State private var tokens: Tokens?
-    var body: some View { Group { if let tokens { HostTabs(tokens: tokens) { self.tokens=nil } } else { AuthView { tokens=$0 } } }.tint(TekDesign.primary).foregroundStyle(TekDesign.text).background(TekDesign.surface) }
+    var body: some View { Group { if let tokens { HostTabs(tokens: tokens) { self.tokens=nil } } else { AuthView { tokens=$0 } } }.tint(TekDesign.primary).foregroundStyle(TekDesign.text).background(TekDesign.surface).onOpenURL { url in Task { await approve(url) } } }
+    @MainActor private func approve(_ url:URL) async { guard let tokens,url.scheme=="tektalk",url.host=="device-link",let parts=URLComponents(url:url,resolvingAgainstBaseURL:false),let idValue=parts.queryItems?.first(where:{$0.name=="id"})?.value,let id=UUID(uuidString:idValue),let secret=parts.queryItems?.first(where:{$0.name=="secret"})?.value else{return};try? await APIClient().approveDeviceLink(token:tokens.access_token,link:id,secret:secret) }
 }
 
 private struct AuthView: View {

@@ -54,6 +54,10 @@ export const translations = {
     "changeTheme": "Đổi giao diện",
     "switchToRegister": "Chưa có tài khoản? Đăng ký",
     "switchToLogin": "Quay lại đăng nhập"
+    ,"loginWithQr": "Đăng nhập bằng QR"
+    ,"scanQr": "Quét bằng TEKtalk trên điện thoại"
+    ,"qrApproval": "Kiểm tra tên thiết bị rồi xác nhận đăng nhập."
+    ,"cancel": "Hủy"
   },
   "en": {
     "connecting": "Connecting",
@@ -110,5 +114,9 @@ export const translations = {
     "changeTheme": "Change appearance",
     "switchToRegister": "No account? Create one",
     "switchToLogin": "Back to sign in"
+    ,"loginWithQr": "Sign in with QR"
+    ,"scanQr": "Scan with TEKtalk on your phone"
+    ,"qrApproval": "Check the device name, then approve sign-in."
+    ,"cancel": "Cancel"
   }
 };

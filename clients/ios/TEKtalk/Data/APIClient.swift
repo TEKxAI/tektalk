@@ -22,6 +22,7 @@ final class APIClient {
     func login(phone:String,password:String,deviceId:UUID?) async throws -> LoginResponse { try await post("v1/auth/login",body:LoginRequest(phone:phone,password:password,device_id:deviceId,device_name:UIDevice.current.name)) }
     func register(phone:String,name:String,password:String,question:String,answer:String) async throws -> Tokens { try await post("v1/auth/register",body:RegisterRequest(phone:phone,display_name:name,password:password,security_question:question,security_answer:answer,device_name:UIDevice.current.name)) }
     func verify(challenge:UUID,answer:String) async throws -> Tokens { try await post("v1/auth/device/verify",body:VerifyDeviceRequest(challenge_id:challenge,answer:answer)) }
+    func approveDeviceLink(token:String, link:UUID, secret:String) async throws { let _:DeviceLinkStatusResponse = try await post("v1/auth/device-link/approve",body:DeviceLinkProof(link_id:link,secret:secret),token:token) }
     func history(token:String,conversation:UUID) async throws -> [ChatMessage] { try await post("v1/chat/messages/history",body:HistoryRequest(conversation_id:conversation,before_message_id:nil,limit:50),token:token) }
     func send(token:String,conversation:UUID,recipient:UUID,text:String) async throws -> SendMessageResponse { try await post("v1/chat/messages/send",body:SendMessageRequest(conversation_id:conversation,recipient_id:recipient,client_message_id:UUID(),text:text),token:token) }
 }

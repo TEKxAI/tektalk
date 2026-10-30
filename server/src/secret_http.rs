@@ -60,6 +60,7 @@ pub struct KeyPacket {
     pub recipient_device_id: Uuid,
     pub packet: Value,
     pub created_at: DateTime<Utc>,
+    pub generation: i64,
 }
 
 #[derive(Deserialize)]
@@ -70,7 +71,10 @@ pub struct SendCiphertext {
     pub counter: i64,
     pub nonce: Vec<u8>,
     pub ciphertext: Vec<u8>,
+    #[serde(default = "default_generation")]
+    pub generation: i64,
 }
+fn default_generation()->i64{1}
 
 #[derive(Serialize, FromRow)]
 pub struct SecretMessage {
@@ -84,6 +88,7 @@ pub struct SecretMessage {
     pub nonce: Vec<u8>,
     pub ciphertext: Vec<u8>,
     pub created_at: DateTime<Utc>,
+    pub generation: i64,
 }
 
 #[derive(Serialize)] pub struct SendCiphertextResponse { pub message: SecretMessage, pub deduplicated: bool }
@@ -168,8 +173,10 @@ pub async fn publish_keys(State(state): State<AppState>, headers: HeaderMap, Jso
     for packet in request.packets {
         let allowed = sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM devices d JOIN secret_conversation_members m ON m.user_id=d.user_id WHERE d.id=$1 AND d.revoked_at IS NULL AND m.conversation_id=$2 AND m.left_epoch IS NULL)").bind(packet.recipient_device_id).bind(request.conversation_id).fetch_one(&mut *tx).await?;
         if !allowed { return Err(AppError::Invalid("recipient device is not an active member")); }
-        sqlx::query("INSERT INTO secret_key_packets(conversation_id,epoch,sender_device_id,recipient_device_id,packet) VALUES($1,$2,$3,$4,$5) ON CONFLICT(conversation_id,epoch,sender_device_id,recipient_device_id) DO UPDATE SET packet=EXCLUDED.packet,created_at=now()")
-            .bind(request.conversation_id).bind(request.epoch).bind(claims.device).bind(packet.recipient_device_id).bind(packet.packet).execute(&mut *tx).await?;
+        let generation=packet.packet.get("generation").and_then(Value::as_i64).ok_or(AppError::Invalid("key packet generation is required"))?;
+        if generation < 1 { return Err(AppError::Invalid("invalid key generation")); }
+        sqlx::query("INSERT INTO secret_key_packets(conversation_id,epoch,generation,sender_device_id,recipient_device_id,packet) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(conversation_id,epoch,generation,sender_device_id,recipient_device_id) DO UPDATE SET packet=EXCLUDED.packet,created_at=now()")
+            .bind(request.conversation_id).bind(request.epoch).bind(generation).bind(claims.device).bind(packet.recipient_device_id).bind(packet.packet).execute(&mut *tx).await?;
     }
     tx.commit().await?;
     Ok(Json(serde_json::json!({"status":"published","epoch":request.epoch})))
@@ -178,7 +185,7 @@ pub async fn publish_keys(State(state): State<AppState>, headers: HeaderMap, Jso
 pub async fn key_packets(State(state): State<AppState>, headers: HeaderMap, Json(request): Json<ConversationRequest>) -> AppResult<Json<Vec<KeyPacket>>> {
     let claims = auth::claims(&state, &headers)?;
     let policy = policy_inner(&state, request.conversation_id, claims.sub).await?;
-    let rows = sqlx::query_as::<_, KeyPacket>("SELECT conversation_id,epoch,sender_device_id,recipient_device_id,packet,created_at FROM secret_key_packets WHERE conversation_id=$1 AND epoch=$2 AND recipient_device_id=$3 ORDER BY created_at")
+    let rows = sqlx::query_as::<_, KeyPacket>("SELECT conversation_id,epoch,generation,sender_device_id,recipient_device_id,packet,created_at FROM secret_key_packets WHERE conversation_id=$1 AND epoch=$2 AND recipient_device_id=$3 ORDER BY generation,created_at")
         .bind(request.conversation_id).bind(policy.epoch).bind(claims.device).fetch_all(&state.db).await?;
     Ok(Json(rows))
 }
@@ -188,12 +195,13 @@ pub async fn send(State(state): State<AppState>, headers: HeaderMap, Json(reques
     let policy = policy_inner(&state, request.conversation_id, claims.sub).await?;
     if request.epoch != policy.epoch { return Err(AppError::Conflict("membership epoch is stale")); }
     if request.counter < 0 { return Err(AppError::Invalid("counter must be non-negative")); }
+    if request.generation < 1 { return Err(AppError::Invalid("generation must be positive")); }
     if request.nonce.len() != 12 { return Err(AppError::Invalid("invalid nonce")); }
     if request.ciphertext.len() < 16 || request.ciphertext.len() > 131_072 { return Err(AppError::Invalid("invalid ciphertext")); }
     let id = state.message_ids.next_id().map_err(|_| AppError::Invalid("message id generation failed"))?;
-    let inserted = sqlx::query("INSERT INTO secret_messages(id,conversation_id,epoch,sender_id,sender_device_id,client_message_id,counter,nonce,ciphertext) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(sender_device_id,client_message_id) DO NOTHING")
-        .bind(id).bind(request.conversation_id).bind(request.epoch).bind(claims.sub).bind(claims.device).bind(request.client_message_id).bind(request.counter).bind(&request.nonce).bind(&request.ciphertext).execute(&state.db).await?.rows_affected() == 1;
-    let message = sqlx::query_as::<_, SecretMessage>("SELECT id,conversation_id,epoch,sender_id,sender_device_id,client_message_id,counter,nonce,ciphertext,created_at FROM secret_messages WHERE sender_device_id=$1 AND client_message_id=$2")
+    let inserted = sqlx::query("INSERT INTO secret_messages(id,conversation_id,epoch,generation,sender_id,sender_device_id,client_message_id,counter,nonce,ciphertext) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(sender_device_id,client_message_id) DO NOTHING")
+        .bind(id).bind(request.conversation_id).bind(request.epoch).bind(request.generation).bind(claims.sub).bind(claims.device).bind(request.client_message_id).bind(request.counter).bind(&request.nonce).bind(&request.ciphertext).execute(&state.db).await?.rows_affected() == 1;
+    let message = sqlx::query_as::<_, SecretMessage>("SELECT id,conversation_id,epoch,generation,sender_id,sender_device_id,client_message_id,counter,nonce,ciphertext,created_at FROM secret_messages WHERE sender_device_id=$1 AND client_message_id=$2")
         .bind(claims.device).bind(request.client_message_id).fetch_one(&state.db).await?;
     Ok(Json(SendCiphertextResponse { message, deduplicated: !inserted }))
 }
@@ -201,7 +209,7 @@ pub async fn send(State(state): State<AppState>, headers: HeaderMap, Json(reques
 pub async fn history(State(state): State<AppState>, headers: HeaderMap, Json(request): Json<ConversationRequest>) -> AppResult<Json<Vec<SecretMessage>>> {
     let claims = auth::claims(&state, &headers)?;
     require_member(&state, request.conversation_id, claims.sub).await?;
-    let rows = sqlx::query_as::<_, SecretMessage>("SELECT id,conversation_id,epoch,sender_id,sender_device_id,client_message_id,counter,nonce,ciphertext,created_at FROM secret_messages WHERE conversation_id=$1 ORDER BY id DESC LIMIT 100")
+    let rows = sqlx::query_as::<_, SecretMessage>("SELECT id,conversation_id,epoch,generation,sender_id,sender_device_id,client_message_id,counter,nonce,ciphertext,created_at FROM secret_messages WHERE conversation_id=$1 ORDER BY id DESC LIMIT 100")
         .bind(request.conversation_id).fetch_all(&state.db).await?;
     Ok(Json(rows.into_iter().rev().collect()))
 }

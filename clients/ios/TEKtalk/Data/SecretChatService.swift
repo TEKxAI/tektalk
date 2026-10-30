@@ -83,7 +83,7 @@ import Foundation
                 guard wire == row else { throw URLError(.cannotDecodeContentData) }
                 return message
             }
-            let wire = CoreEncryptedMessage(conversation_id: row.conversation_id.uuidString.lowercased(), epoch: UInt64(row.epoch), sender_device_id: row.sender_device_id.uuidString.lowercased(), counter: UInt64(row.counter), nonce: row.nonce, ciphertext: row.ciphertext)
+            let wire = CoreEncryptedMessage(conversation_id: row.conversation_id.uuidString.lowercased(), epoch: UInt64(row.epoch), sender_device_id: row.sender_device_id.uuidString.lowercased(), counter: UInt64(row.counter), nonce: row.nonce, ciphertext: row.ciphertext, generation: UInt64(row.generation))
             guard let body = core.decrypt(message: try json(wire)) else { throw URLError(.cannotDecodeContentData) }
             let message = ChatMessage(id: row.id, conversation_id: row.conversation_id, sender_id: row.sender_id, recipient_id: row.sender_id, client_message_id: row.client_message_id, body: body, created_at: row.created_at)
             decrypted[row.id] = (row, message)
@@ -96,7 +96,7 @@ import Foundation
         guard let value = core.encrypt(conversation: conversation.uuidString.lowercased(), epoch: UInt64(policy.epoch), plaintext: text) else { throw URLError(.cannotDecodeContentData) }
         try save() // Persist the advanced counter before handing ciphertext to the network.
         let wire = try decoder.decode(CoreEncryptedMessage.self, from: Data(value.utf8))
-        let response: SendSecretResponse = try await api.post("v1/secret/messages/send", body: SendSecretRequest(conversation_id: conversation, client_message_id: UUID(), epoch: Int64(wire.epoch), counter: Int64(wire.counter), nonce: wire.nonce, ciphertext: wire.ciphertext), token: tokens.access_token)
+        let response: SendSecretResponse = try await api.post("v1/secret/messages/send", body: SendSecretRequest(conversation_id: conversation, client_message_id: UUID(), epoch: Int64(wire.epoch), counter: Int64(wire.counter), nonce: wire.nonce, ciphertext: wire.ciphertext, generation: Int64(wire.generation)), token: tokens.access_token)
         let row = response.message
         return ChatMessage(id: row.id, conversation_id: row.conversation_id, sender_id: row.sender_id, recipient_id: row.sender_id, client_message_id: row.client_message_id, body: text, created_at: row.created_at)
     }

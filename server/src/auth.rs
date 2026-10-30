@@ -1,6 +1,8 @@
 use axum::{extract::State, http::HeaderMap, Json};
 use chrono::{Duration, Utc};
-use rand::Rng;
+use rand::{Rng, RngCore};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use qrcode::{QrCode, render::svg};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use uuid::Uuid;
@@ -13,8 +15,56 @@ use crate::{crypto, error::{AppError, AppResult}, state::AppState, token};
 #[derive(Deserialize)] pub struct Phone { pub phone: String }
 #[derive(Deserialize)] pub struct ResetPassword { pub phone: String, pub otp: String, pub new_password: String }
 #[derive(Deserialize)] pub struct ChangePassword { pub current_password: String, pub new_password: String }
-#[derive(Serialize)] pub struct AuthTokens { pub access_token: String, pub refresh_token: String, pub user_id: Uuid, pub device_id: Uuid }
+#[derive(Serialize, Deserialize)] pub struct AuthTokens { pub access_token: String, pub refresh_token: String, pub user_id: Uuid, pub device_id: Uuid }
 #[derive(Serialize)] #[serde(tag = "status", rename_all = "snake_case")] pub enum LoginResult { Authenticated { tokens: AuthTokens }, DeviceVerificationRequired { challenge_id: Uuid, question: String } }
+
+#[derive(Deserialize)] pub struct StartDeviceLink { pub device_name: String, pub platform: String }
+#[derive(Deserialize)] pub struct DeviceLinkProof { pub link_id: Uuid, pub secret: String }
+#[derive(Serialize)] pub struct DeviceLinkStarted { pub link_id: Uuid, pub secret: String, pub qr_payload: String, pub qr_svg: String, pub expires_at: chrono::DateTime<Utc> }
+#[derive(Serialize)] #[serde(tag="status", rename_all="snake_case")] pub enum DeviceLinkStatus { Pending, Approved { tokens: AuthTokens } }
+
+pub async fn start_device_link(State(s): State<AppState>, Json(r): Json<StartDeviceLink>) -> AppResult<Json<DeviceLinkStarted>> {
+    if !matches!(r.platform.as_str(), "web" | "macos" | "windows") { return Err(AppError::Invalid("unsupported desktop platform")); }
+    let name = r.device_name.trim(); if name.len() < 2 || name.len() > 120 { return Err(AppError::Invalid("invalid device name")); }
+    let id = Uuid::new_v4(); let mut secret_bytes = [0u8; 32]; rand::rngs::OsRng.fill_bytes(&mut secret_bytes);
+    let secret = URL_SAFE_NO_PAD.encode(secret_bytes); let expires_at = Utc::now() + Duration::minutes(3);
+    let payload = format!("tektalk://device-link?v=1&id={id}&secret={secret}&platform={}", r.platform);
+    let digest = crypto::hmac_hex(s.config.jwt_secret.as_bytes(), &format!("device-link:{id}:{secret}"));
+    sqlx::query("INSERT INTO device_link_challenges(id,secret_digest,device_name,platform,qr_payload,expires_at) VALUES($1,$2,$3,$4,$5,$6)")
+        .bind(id).bind(digest).bind(name).bind(&r.platform).bind(&payload).bind(expires_at).execute(&s.db).await?;
+    let code = QrCode::new(payload.as_bytes()).map_err(|e| AppError::Internal(e.into()))?;
+    let qr_svg = code.render::<svg::Color>().min_dimensions(256,256).dark_color(svg::Color("#0969DA")).light_color(svg::Color("#FFFFFF")).build();
+    Ok(Json(DeviceLinkStarted { link_id:id, secret, qr_payload:payload, qr_svg, expires_at }))
+}
+
+pub async fn approve_device_link(State(s): State<AppState>, headers: HeaderMap, Json(r): Json<DeviceLinkProof>) -> AppResult<Json<serde_json::Value>> {
+    let claims = claims(&s, &headers)?;
+    let row = sqlx::query("SELECT secret_digest,device_name FROM device_link_challenges WHERE id=$1 AND expires_at>now() AND approved_at IS NULL AND claimed_at IS NULL")
+        .bind(r.link_id).fetch_optional(&s.db).await?.ok_or(AppError::Unauthorized)?;
+    let expected = crypto::hmac_hex(s.config.jwt_secret.as_bytes(), &format!("device-link:{}:{}", r.link_id, r.secret));
+    if expected != row.get::<String,_>("secret_digest") { return Err(AppError::Unauthorized); }
+    let device_id=Uuid::new_v4(); let mut tx=s.db.begin().await?;
+    sqlx::query("INSERT INTO devices(id,user_id,name,trusted_at,last_seen_at) VALUES($1,$2,$3,now(),now())")
+        .bind(device_id).bind(claims.sub).bind(row.get::<String,_>("device_name")).execute(&mut *tx).await?;
+    let updated=sqlx::query("UPDATE device_link_challenges SET approved_user_id=$1,approved_device_id=$2,approved_at=now() WHERE id=$3 AND approved_at IS NULL AND expires_at>now()")
+        .bind(claims.sub).bind(device_id).bind(r.link_id).execute(&mut *tx).await?.rows_affected();
+    if updated != 1 { return Err(AppError::Conflict("device link was already approved")); } tx.commit().await?;
+    Ok(Json(serde_json::json!({"status":"approved","device_id":device_id})))
+}
+
+pub async fn poll_device_link(State(s): State<AppState>, Json(r): Json<DeviceLinkProof>) -> AppResult<Json<DeviceLinkStatus>> {
+    let row = sqlx::query("SELECT secret_digest,approved_user_id,approved_device_id,claimed_at FROM device_link_challenges WHERE id=$1 AND expires_at>now()")
+        .bind(r.link_id).fetch_optional(&s.db).await?.ok_or(AppError::Unauthorized)?;
+    let expected = crypto::hmac_hex(s.config.jwt_secret.as_bytes(), &format!("device-link:{}:{}", r.link_id, r.secret));
+    if expected != row.get::<String,_>("secret_digest") || row.get::<Option<chrono::DateTime<Utc>>,_>("claimed_at").is_some() { return Err(AppError::Unauthorized); }
+    let Some(user_id)=row.get::<Option<Uuid>,_>("approved_user_id") else { return Ok(Json(DeviceLinkStatus::Pending)); };
+    let device_id=row.get::<Option<Uuid>,_>("approved_device_id").ok_or(AppError::Unauthorized)?;
+    let claimed=sqlx::query("UPDATE device_link_challenges SET claimed_at=now() WHERE id=$1 AND claimed_at IS NULL AND approved_at IS NOT NULL")
+        .bind(r.link_id).execute(&s.db).await?.rows_affected();
+    if claimed!=1{return Err(AppError::Unauthorized)}
+    let tokens=make_tokens(&s,user_id,device_id).await?;
+    Ok(Json(DeviceLinkStatus::Approved{tokens}))
+}
 
 pub async fn register(State(s): State<AppState>, Json(r): Json<Register>) -> AppResult<Json<AuthTokens>> {
     let phone = normalize_phone(&r.phone)?;
@@ -86,7 +136,7 @@ pub async fn change_password(State(s): State<AppState>, headers: HeaderMap, Json
 
 pub fn claims(s:&AppState, headers:&HeaderMap)->AppResult<token::Claims>{ let h=headers.get("authorization").and_then(|v|v.to_str().ok()).and_then(|v|v.strip_prefix("Bearer ")).ok_or(AppError::Unauthorized)?; token::verify(&s.config.jwt_secret,h) }
 
-async fn make_tokens(s:&AppState,user_id:Uuid,device_id:Uuid)->AppResult<AuthTokens>{ let access_token=token::issue(&s.config.jwt_secret,user_id,device_id)?; let refresh_token=Uuid::new_v4().to_string()+&Uuid::new_v4().to_string(); let digest=crypto::hmac_hex(s.config.jwt_secret.as_bytes(),&refresh_token); sqlx::query("INSERT INTO refresh_tokens(user_id,device_id,token_digest,expires_at) VALUES($1,$2,$3,now()+interval '30 days')").bind(user_id).bind(device_id).bind(digest).execute(&s.db).await?; Ok(AuthTokens{access_token,refresh_token,user_id,device_id}) }
+pub(crate) async fn make_tokens(s:&AppState,user_id:Uuid,device_id:Uuid)->AppResult<AuthTokens>{ let access_token=token::issue(&s.config.jwt_secret,user_id,device_id)?; let refresh_token=Uuid::new_v4().to_string()+&Uuid::new_v4().to_string(); let digest=crypto::hmac_hex(s.config.jwt_secret.as_bytes(),&refresh_token); sqlx::query("INSERT INTO refresh_tokens(user_id,device_id,token_digest,expires_at) VALUES($1,$2,$3,now()+interval '30 days')").bind(user_id).bind(device_id).bind(digest).execute(&s.db).await?; Ok(AuthTokens{access_token,refresh_token,user_id,device_id}) }
 
 fn normalize_phone(v:&str)->AppResult<String>{ let clean:String=v.chars().filter(|c|c.is_ascii_digit()||*c=='+').collect(); if !clean.starts_with('+')||clean.len()<9||clean.len()>16{return Err(AppError::Invalid("phone must be E.164"));} Ok(clean) }
 

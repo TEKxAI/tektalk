@@ -21,8 +21,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-pub const SUITE: &str = "TEKTALK_X25519_MLKEM768_AES256GCMSIV_SHA256";
-const PROTOCOL_LABEL: &[u8] = b"TEKtalk Secret Chat v1";
+pub const SUITE: &str = "TEKTALK_LEVEL3_X25519_MLKEM768_AES256GCMSIV_SHA256";
+const PROTOCOL_LABEL: &[u8] = b"TEKtalk Secret Chat v2 Level 3";
+const MAX_SKIP: u64 = 2_000;
+pub const PQ_REKEY_MESSAGE_INTERVAL: u64 = 50;
 
 #[derive(Debug, thiserror::Error, Eq, PartialEq)]
 pub enum Error {
@@ -220,75 +222,132 @@ pub struct EncryptedMessage {
     pub counter: u64,
     pub nonce: [u8; 12],
     pub ciphertext: Vec<u8>,
+    /// Identifies the sender-chain generation. A fresh generation is
+    /// distributed after every PQ rekey or membership change.
+    #[serde(default = "default_generation")]
+    pub generation: u64,
 }
+
+fn default_generation() -> u64 { 1 }
 
 #[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct SenderKey {
-    key: [u8; 32],
+    send_chain_key: [u8; 32],
+    receive_chain_key: [u8; 32],
     epoch: u64,
-    next_counter: u64,
+    generation: u64,
+    next_send_counter: u64,
+    next_receive_counter: u64,
+    #[zeroize(skip)]
+    skipped_message_keys: BTreeMap<u64, [u8; 32]>,
 }
 
 impl SenderKey {
     pub fn generate(epoch: u64) -> Self {
         let mut key = [0u8; 32];
         OsRng.fill_bytes(&mut key);
-        Self { key, epoch, next_counter: 0 }
+        Self::from_bytes(key, epoch)
     }
 
     pub fn from_bytes(key: [u8; 32], epoch: u64) -> Self {
-        Self { key, epoch, next_counter: 0 }
+        Self { send_chain_key: key, receive_chain_key: key, epoch, generation: 1,
+            next_send_counter: 0, next_receive_counter: 0, skipped_message_keys: BTreeMap::new() }
+    }
+
+    /// Starts a new hybrid-PQ generation. The caller distributes this new
+    /// seed through a fresh X25519 + ML-KEM envelope to every member device.
+    pub fn pq_rekey(&mut self) {
+        let mut key = [0u8; 32]; OsRng.fill_bytes(&mut key);
+        self.send_chain_key = key; self.receive_chain_key = key;
+        self.generation = self.generation.saturating_add(1);
+        self.next_send_counter = 0; self.next_receive_counter = 0;
+        for (_, mut skipped) in std::mem::take(&mut self.skipped_message_keys) { skipped.zeroize(); }
+    }
+
+    pub fn generation(&self) -> u64 { self.generation }
+    pub fn pq_rekey_due(&self) -> bool { self.next_send_counter > 0 && self.next_send_counter % PQ_REKEY_MESSAGE_INTERVAL == 0 }
+
+    fn derive_step(chain_key: &[u8; 32], counter: u64) -> Result<([u8; 32], [u8; 32])> {
+        let hkdf = Hkdf::<Sha256>::new(Some(PROTOCOL_LABEL), chain_key);
+        let mut material = [0u8; 64];
+        let mut info = b"sender-chain-step".to_vec(); info.extend_from_slice(&counter.to_be_bytes());
+        hkdf.expand(&info, &mut material).map_err(|_| Error::InvalidKey)?;
+        let mut message = [0u8; 32]; let mut next = [0u8; 32];
+        message.copy_from_slice(&material[..32]); next.copy_from_slice(&material[32..]); material.zeroize();
+        Ok((message, next))
     }
 
     pub fn encrypt(&mut self, conversation_id: &str, sender_device_id: &str, plaintext: &[u8]) -> Result<EncryptedMessage> {
-        let counter = self.next_counter;
-        self.next_counter = self.next_counter.checked_add(1).ok_or(Error::Replay)?;
+        let counter = self.next_send_counter;
+        let (mut message_key, next_chain_key) = Self::derive_step(&self.send_chain_key, counter)?;
+        self.send_chain_key = next_chain_key;
+        self.next_send_counter = self.next_send_counter.checked_add(1).ok_or(Error::Replay)?;
         let mut nonce = [0u8; 12];
         OsRng.fill_bytes(&mut nonce);
-        let aad = message_aad(conversation_id, self.epoch, sender_device_id, counter);
-        let ciphertext = Aes256GcmSiv::new((&self.key).into())
+        let aad = message_aad(conversation_id, self.epoch, self.generation, sender_device_id, counter);
+        let ciphertext = Aes256GcmSiv::new((&message_key).into())
             .encrypt(Nonce::from_slice(&nonce), Payload { msg: plaintext, aad: &aad })
             .map_err(|_| Error::Authentication)?;
+        message_key.zeroize();
         Ok(EncryptedMessage {
             conversation_id: conversation_id.into(), epoch: self.epoch,
-            sender_device_id: sender_device_id.into(), counter, nonce, ciphertext,
+            sender_device_id: sender_device_id.into(), counter, nonce, ciphertext, generation: self.generation,
         })
     }
 
-    pub fn decrypt(&self, message: &EncryptedMessage, replay: &mut ReplayGuard) -> Result<Vec<u8>> {
-        if message.epoch != self.epoch { return Err(Error::StaleEpoch); }
-        let aad = message_aad(&message.conversation_id, message.epoch, &message.sender_device_id, message.counter);
-        let plaintext = Aes256GcmSiv::new((&self.key).into())
-            .decrypt(Nonce::from_slice(&message.nonce), Payload { msg: &message.ciphertext, aad: &aad })
-            .map_err(|_| Error::Authentication)?;
-        replay.accept(&message.conversation_id, &message.sender_device_id, message.epoch, message.counter)?;
+    pub fn decrypt(&mut self, message: &EncryptedMessage, replay: &mut ReplayGuard) -> Result<Vec<u8>> {
+        if message.epoch != self.epoch || message.generation != self.generation { return Err(Error::StaleEpoch); }
+        if message.counter >= self.next_receive_counter.saturating_add(MAX_SKIP) { return Err(Error::Replay); }
+        // Advance a staged copy. An unauthenticated packet must never consume
+        // a chain/message key or a forged packet could permanently desync the
+        // receiver before the authentic packet arrives.
+        let mut staged = self.clone();
+        let mut message_key = if let Some(key) = staged.skipped_message_keys.remove(&message.counter) { key } else {
+            if message.counter < staged.next_receive_counter { return Err(Error::Replay); }
+            let mut selected = None;
+            while staged.next_receive_counter <= message.counter {
+                let counter = staged.next_receive_counter;
+                let (key, next) = Self::derive_step(&staged.receive_chain_key, counter)?;
+                staged.receive_chain_key = next; staged.next_receive_counter += 1;
+                if counter == message.counter { selected = Some(key); } else { staged.skipped_message_keys.insert(counter, key); }
+            }
+            selected.ok_or(Error::InvalidKey)?
+        };
+        let aad = message_aad(&message.conversation_id, message.epoch, message.generation, &message.sender_device_id, message.counter);
+        let plaintext = Aes256GcmSiv::new((&message_key).into())
+            .decrypt(Nonce::from_slice(&message.nonce), Payload { msg: &message.ciphertext, aad: &aad });
+        message_key.zeroize();
+        let plaintext = plaintext.map_err(|_| Error::Authentication)?;
+        replay.accept(&message.conversation_id, &message.sender_device_id, message.epoch, message.generation, message.counter)?;
+        *self = staged;
         Ok(plaintext)
     }
 }
 
-fn message_aad(conversation_id: &str, epoch: u64, sender: &str, counter: u64) -> Vec<u8> {
+fn message_aad(conversation_id: &str, epoch: u64, generation: u64, sender: &str, counter: u64) -> Vec<u8> {
     let mut aad = Vec::from(PROTOCOL_LABEL);
     aad.extend_from_slice(conversation_id.as_bytes());
     aad.extend_from_slice(&epoch.to_be_bytes());
+    aad.extend_from_slice(&generation.to_be_bytes());
     aad.extend_from_slice(sender.as_bytes());
     aad.extend_from_slice(&counter.to_be_bytes());
     aad
 }
 
 #[derive(Default)]
-pub struct ReplayGuard(BTreeMap<(String, String, u64), BTreeSet<u64>>);
+pub struct ReplayGuard(BTreeMap<(String, String, u64, u64), BTreeSet<u64>>);
 
 impl ReplayGuard {
-    pub(crate) fn export(&self) -> Vec<(String, String, u64, Vec<u64>)> {
-        self.0.iter().map(|((conversation, sender, epoch), counters)| (conversation.clone(), sender.clone(), *epoch, counters.iter().copied().collect())).collect()
+    pub(crate) fn export(&self) -> Vec<(String, String, u64, u64, Vec<u64>)> {
+        self.0.iter().map(|((conversation, sender, epoch, generation), counters)| (conversation.clone(), sender.clone(), *epoch, *generation, counters.iter().copied().collect())).collect()
     }
 
-    pub(crate) fn restore(rows: Vec<(String, String, u64, Vec<u64>)>) -> Self {
-        Self(rows.into_iter().map(|(conversation, sender, epoch, counters)| ((conversation, sender, epoch), counters.into_iter().collect())).collect())
+    pub(crate) fn restore(rows: Vec<(String, String, u64, u64, Vec<u64>)>) -> Self {
+        Self(rows.into_iter().map(|(conversation, sender, epoch, generation, counters)| ((conversation, sender, epoch, generation), counters.into_iter().collect())).collect())
     }
 
-    fn accept(&mut self, conversation: &str, sender: &str, epoch: u64, counter: u64) -> Result<()> {
-        if !self.0.entry((conversation.into(), sender.into(), epoch)).or_default().insert(counter) {
+    fn accept(&mut self, conversation: &str, sender: &str, epoch: u64, generation: u64, counter: u64) -> Result<()> {
+        if !self.0.entry((conversation.into(), sender.into(), epoch, generation)).or_default().insert(counter) {
             return Err(Error::Replay);
         }
         Ok(())
@@ -302,6 +361,8 @@ pub struct WrappedSenderKey {
     pub nonce: [u8; 12],
     pub ciphertext: Vec<u8>,
     pub epoch: u64,
+    #[serde(default = "default_generation")]
+    pub generation: u64,
 }
 
 /// Wraps a fresh sender key for every device in a 1-1 or group membership.
@@ -317,11 +378,11 @@ pub fn distribute_sender_key(
         let (envelope, session) = create_session(recipient, policy, conversation_id)?;
         let mut nonce = [0u8; 12];
         OsRng.fill_bytes(&mut nonce);
-        let aad = message_aad(conversation_id, policy.epoch, &recipient.device_id, 0);
+        let aad = message_aad(conversation_id, policy.epoch, sender_key.generation, &recipient.device_id, 0);
         let ciphertext = Aes256GcmSiv::new(session.expose_for_key_wrap().into())
-            .encrypt(Nonce::from_slice(&nonce), Payload { msg: &sender_key.key, aad: &aad })
+            .encrypt(Nonce::from_slice(&nonce), Payload { msg: &sender_key.send_chain_key, aad: &aad })
             .map_err(|_| Error::Authentication)?;
-        Ok(WrappedSenderKey { recipient_device_id: recipient.device_id.clone(), envelope, nonce, ciphertext, epoch: policy.epoch })
+        Ok(WrappedSenderKey { recipient_device_id: recipient.device_id.clone(), envelope, nonce, ciphertext, epoch: policy.epoch, generation: sender_key.generation })
     }).collect()
 }
 
@@ -333,12 +394,14 @@ pub fn unwrap_sender_key(
 ) -> Result<SenderKey> {
     if wrapped.epoch != policy.epoch { return Err(Error::StaleEpoch); }
     let session = recipient.open_session(&wrapped.envelope, policy)?;
-    let aad = message_aad(conversation_id, policy.epoch, &recipient.bundle.device_id, 0);
+    let aad = message_aad(conversation_id, policy.epoch, wrapped.generation, &recipient.bundle.device_id, 0);
     let plaintext = Aes256GcmSiv::new(session.expose_for_key_wrap().into())
         .decrypt(Nonce::from_slice(&wrapped.nonce), Payload { msg: &wrapped.ciphertext, aad: &aad })
         .map_err(|_| Error::Authentication)?;
     let key: [u8; 32] = plaintext.try_into().map_err(|_| Error::InvalidKey)?;
-    Ok(SenderKey::from_bytes(key, policy.epoch))
+    let mut sender = SenderKey::from_bytes(key, policy.epoch);
+    sender.generation = wrapped.generation;
+    Ok(sender)
 }
 
 #[cfg(test)]
@@ -367,7 +430,7 @@ mod tests {
         let wrapped = distribute_sender_key("group-1", &sender, &bundles, &policy).unwrap();
         let message = sender.encrypt("group-1", "alice-phone", b"secret hello").unwrap();
         for (device, envelope) in devices.iter().zip(&wrapped) {
-            let receiver = unwrap_sender_key("group-1", device, envelope, &policy).unwrap();
+            let mut receiver = unwrap_sender_key("group-1", device, envelope, &policy).unwrap();
             let mut replay = ReplayGuard::default();
             assert_eq!(receiver.decrypt(&message, &mut replay).unwrap(), b"secret hello");
             assert_eq!(receiver.decrypt(&message, &mut replay), Err(Error::Replay));
@@ -390,7 +453,42 @@ mod tests {
         let mut sender = SenderKey::generate(1);
         let mut message = sender.encrypt("group-1", "alice-phone", b"hello").unwrap();
         message.conversation_id = "other-group".into();
-        let receiver = SenderKey::from_bytes(sender.key, 1);
+        let mut receiver = SenderKey::from_bytes(sender.receive_chain_key, 1);
         assert_eq!(receiver.decrypt(&message, &mut ReplayGuard::default()), Err(Error::Authentication));
+    }
+
+    #[test]
+    fn forged_ciphertext_does_not_advance_the_receive_chain() {
+        let mut sender = SenderKey::generate(1);
+        let mut receiver = SenderKey::from_bytes(sender.receive_chain_key, 1);
+        let authentic = sender.encrypt("chat-1", "alice-phone", b"hello").unwrap();
+        let mut forged = authentic.clone(); forged.ciphertext[0] ^= 1;
+        let mut replay = ReplayGuard::default();
+        assert_eq!(receiver.decrypt(&forged, &mut replay), Err(Error::Authentication));
+        assert_eq!(receiver.decrypt(&authentic, &mut replay).unwrap(), b"hello");
+    }
+
+    #[test]
+    fn derives_and_erases_a_unique_key_for_each_message_with_out_of_order_support() {
+        let mut sender = SenderKey::generate(1);
+        let mut receiver = SenderKey::from_bytes(sender.receive_chain_key, 1);
+        let first = sender.encrypt("chat-1", "alice-phone", b"one").unwrap();
+        let second = sender.encrypt("chat-1", "alice-phone", b"two").unwrap();
+        assert_ne!(first.ciphertext, second.ciphertext);
+        let mut replay = ReplayGuard::default();
+        assert_eq!(receiver.decrypt(&second, &mut replay).unwrap(), b"two");
+        assert_eq!(receiver.decrypt(&first, &mut replay).unwrap(), b"one");
+        assert_eq!(receiver.decrypt(&first, &mut replay), Err(Error::Replay));
+    }
+
+    #[test]
+    fn pq_rekey_invalidates_the_previous_generation() {
+        let mut sender = SenderKey::generate(1);
+        let mut receiver = SenderKey::from_bytes(sender.receive_chain_key, 1);
+        let old = sender.encrypt("chat-1", "alice-phone", b"old").unwrap();
+        sender.pq_rekey();
+        assert_eq!(receiver.decrypt(&old, &mut ReplayGuard::default()).unwrap(), b"old");
+        let new = sender.encrypt("chat-1", "alice-phone", b"new").unwrap();
+        assert_eq!(receiver.decrypt(&new, &mut ReplayGuard::default()), Err(Error::StaleEpoch));
     }
 }

@@ -16,6 +16,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: true
+        INFOPLIST_KEY_CFBundleURLTypes: '[{"CFBundleURLSchemes":["tektalk"]}]'
         LIBRARY_SEARCH_PATHS: "$(inherited) $(SRCROOT)/RustCore"
         OTHER_LDFLAGS: "$(inherited) -ltektalk_client_core -framework Security"
     preBuildScripts:

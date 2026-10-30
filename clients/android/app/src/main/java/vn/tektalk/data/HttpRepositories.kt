@@ -20,6 +20,8 @@ import java.util.UUID
 @Serializable private data class VerifyDto(val challenge_id:String,val answer:String)
 @Serializable private data class TokensDto(val access_token:String,val refresh_token:String,val user_id:String,val device_id:String)
 @Serializable private data class LoginResponseDto(val status:String,val tokens:TokensDto?=null,val challenge_id:String?=null,val question:String?=null)
+@Serializable private data class DeviceLinkProofDto(val link_id:String,val secret:String)
+@Serializable private data class StatusDto(val status:String)
 @Serializable private data class SendDto(val conversation_id:String,val recipient_id:String,val client_message_id:String,val text:String)
 @Serializable private data class HistoryDto(val conversation_id:String,val before_message_id:Long?=null,val limit:Long=50)
 @Serializable private data class MessageDto(val id:Long,val conversation_id:String,val sender_id:String,val recipient_id:String,val client_message_id:String,val body:String,val created_at:String)
@@ -30,13 +32,13 @@ import java.util.UUID
 @Serializable private data class ConversationDto(val conversation_id:String)
 @Serializable private data class SecretPolicyDto(val conversation_id:String,val kind:String,val suite:String,val epoch:Long)
 @Serializable private data class ServerBundleDto(val user_id:String,val device_id:String,val suite:String,val x25519_public:List<Int>,val ml_kem_768_public:List<Int>)
-@Serializable private data class CoreWrappedKeyDto(val recipient_device_id:String,val envelope:JsonElement,val nonce:List<Int>,val ciphertext:List<Int>,val epoch:Long)
+@Serializable private data class CoreWrappedKeyDto(val recipient_device_id:String,val envelope:JsonElement,val nonce:List<Int>,val ciphertext:List<Int>,val epoch:Long,val generation:Long=1)
 @Serializable private data class PublishPacketDto(val recipient_device_id:String,val packet:JsonElement)
 @Serializable private data class PublishKeysDto(val conversation_id:String,val epoch:Long,val packets:List<PublishPacketDto>)
 @Serializable private data class KeyPacketDto(val conversation_id:String,val epoch:Long,val sender_device_id:String,val recipient_device_id:String,val packet:JsonElement,val created_at:String)
-@Serializable private data class CoreEncryptedDto(val conversation_id:String,val epoch:Long,val sender_device_id:String,val counter:Long,val nonce:List<Int>,val ciphertext:List<Int>)
-@Serializable private data class SendSecretDto(val conversation_id:String,val client_message_id:String,val epoch:Long,val counter:Long,val nonce:List<Int>,val ciphertext:List<Int>)
-@Serializable private data class SecretMessageDto(val id:Long,val conversation_id:String,val epoch:Long,val sender_id:String,val sender_device_id:String,val client_message_id:String,val counter:Long,val nonce:List<Int>,val ciphertext:List<Int>,val created_at:String)
+@Serializable private data class CoreEncryptedDto(val conversation_id:String,val epoch:Long,val sender_device_id:String,val counter:Long,val nonce:List<Int>,val ciphertext:List<Int>,val generation:Long=1)
+@Serializable private data class SendSecretDto(val conversation_id:String,val client_message_id:String,val epoch:Long,val counter:Long,val nonce:List<Int>,val ciphertext:List<Int>,val generation:Long=1)
+@Serializable private data class SecretMessageDto(val id:Long,val conversation_id:String,val epoch:Long,val sender_id:String,val sender_device_id:String,val client_message_id:String,val counter:Long,val nonce:List<Int>,val ciphertext:List<Int>,val created_at:String,val generation:Long=1)
 @Serializable private data class SendSecretResponseDto(val message:SecretMessageDto,val deduplicated:Boolean)
 @Serializable private data class CachedSecretDto(val wire:SecretMessageDto,val body:String)
 @Serializable private data class StoredSecretDto(val core:String,val messages:List<CachedSecretDto>)
@@ -71,13 +73,19 @@ class HttpAuthRepository internal constructor(private val api:HttpApi=HttpApi())
     override fun verifyDevice(challengeId:String,answer:String)=api.post<VerifyDto,TokensDto>("/v1/auth/device/verify",VerifyDto(challengeId,answer)).domain()
 }
 
+class HttpDeviceLinkRepository internal constructor(private val api:HttpApi=HttpApi()) {
+    fun approve(accessToken:String,linkId:String,secret:String) { api.post<DeviceLinkProofDto,StatusDto>("/v1/auth/device-link/approve",DeviceLinkProofDto(linkId,secret),accessToken) }
+}
+
 class HttpChatRepository internal constructor(private val api:HttpApi=HttpApi()):ChatRepository {
     override fun history(accessToken:String,conversationId:String)=api.post<HistoryDto,List<MessageDto>>("/v1/chat/messages/history",HistoryDto(conversationId),accessToken).map{it.domain()}
     override fun send(accessToken:String,draft:ChatDraft)=api.post<SendDto,SendResponseDto>("/v1/chat/messages/send",SendDto(draft.conversationId,draft.recipientId,UUID.randomUUID().toString(),draft.text),accessToken).message.domain()
 }
 
 class HttpSecretChatRepository internal constructor(private val api:HttpApi=HttpApi(),private val storage:SecretStateStorage?=null):SecretChatRepository {
-    private val json=Json{ignoreUnknownKeys=true}
+    // Level 3 generation is authenticated wire metadata. Generation 1 equals
+    // the Kotlin default, but it must still be present in published packets.
+    private val json=Json{ignoreUnknownKeys=true;encodeDefaults=true}
     private var core:NativeCore.SecretDevice?=null
     private val policies=mutableMapOf<String,SecretPolicyDto>()
     private val decrypted=mutableMapOf<Long,Pair<SecretMessageDto,Message>>()
@@ -136,7 +144,7 @@ class HttpSecretChatRepository internal constructor(private val api:HttpApi=Http
         prepare(accessToken,tokens,conversationId)
         return api.post<ConversationDto,List<SecretMessageDto>>("/v1/secret/messages/history",ConversationDto(conversationId),accessToken).map{row->
             decrypted[row.id]?.let{(wire,message)->check(wire==row){"Secret Chat history changed"};return@map message}
-            val encrypted=CoreEncryptedDto(row.conversation_id,row.epoch,row.sender_device_id,row.counter,row.nonce,row.ciphertext)
+            val encrypted=CoreEncryptedDto(row.conversation_id,row.epoch,row.sender_device_id,row.counter,row.nonce,row.ciphertext,row.generation)
             val body=device(tokens).decrypt(json.encodeToString(encrypted))
             Message(row.id,row.conversation_id,row.sender_id,row.sender_id,row.client_message_id,body,row.created_at).also{decrypted[row.id]=row to it;save()}
         }
@@ -145,7 +153,7 @@ class HttpSecretChatRepository internal constructor(private val api:HttpApi=Http
         val policy=prepare(accessToken,tokens,draft.conversationId)
         val encrypted=json.decodeFromString<CoreEncryptedDto>(device(tokens).encrypt(draft.conversationId,policy.epoch,draft.text))
         save()
-        val result=api.post<SendSecretDto,SendSecretResponseDto>("/v1/secret/messages/send",SendSecretDto(draft.conversationId,UUID.randomUUID().toString(),encrypted.epoch,encrypted.counter,encrypted.nonce,encrypted.ciphertext),accessToken).message
+        val result=api.post<SendSecretDto,SendSecretResponseDto>("/v1/secret/messages/send",SendSecretDto(draft.conversationId,UUID.randomUUID().toString(),encrypted.epoch,encrypted.counter,encrypted.nonce,encrypted.ciphertext,encrypted.generation),accessToken).message
         return Message(result.id,result.conversation_id,result.sender_id,result.sender_id,result.client_message_id,draft.text,result.created_at)
     }
     @Synchronized override fun close(){core?.close();core=null;policies.clear();decrypted.clear();owner=null}
@@ -156,5 +164,6 @@ object ClientDependencies {
     fun initialize(context:android.content.Context){this.context=context.applicationContext}
     val auth: AuthRepository by lazy { HttpAuthRepository() }
     val chat: ChatRepository by lazy { HttpChatRepository() }
+    val deviceLink by lazy { HttpDeviceLinkRepository() }
     val secretChat: SecretChatRepository by lazy { HttpSecretChatRepository(storage=AndroidSecretStateStorage(context)) }
 }

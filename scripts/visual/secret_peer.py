@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib.error import HTTPError
 from scenario import post
 
-SUITE = 'TEKTALK_X25519_MLKEM768_AES256GCMSIV_SHA256'
+SUITE = 'TEKTALK_LEVEL3_X25519_MLKEM768_AES256GCMSIV_SHA256'
 
 def library():
     name = 'tektalk_client_core.dll' if os.name == 'nt' else ('libtektalk_client_core.dylib' if sys.platform == 'darwin' else 'libtektalk_client_core.so')

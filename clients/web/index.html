@@ -33,6 +33,13 @@
         <label id="challengeField" hidden><span id="challengeQuestion" data-i18n="securityAnswer">Câu trả lời</span><input name="challenge_answer" type="password" autocomplete="off" disabled></label>
         <div id="authError" class="form-error" role="alert"></div>
         <button id="authSubmit" class="primary" type="submit" data-i18n="login">Đăng nhập</button>
+        <button id="qrLoginButton" class="secondary" type="button" data-i18n="loginWithQr">Đăng nhập bằng QR</button>
+        <section id="qrLogin" class="qr-login" hidden aria-live="polite">
+          <div id="qrCode" class="qr-code"></div>
+          <strong data-i18n="scanQr">Quét bằng TEKtalk trên điện thoại</strong>
+          <p data-i18n="qrApproval">Kiểm tra tên thiết bị rồi xác nhận đăng nhập.</p>
+          <button id="cancelQrButton" class="secondary" type="button" data-i18n="cancel">Hủy</button>
+        </section>
         <div class="auth-switch">
           <button type="button" data-auth-mode="register" data-i18n="switchToRegister">Chưa có tài khoản? Đăng ký</button>
           <button type="button" data-auth-mode="login" data-i18n="switchToLogin" hidden>Đã có tài khoản? Đăng nhập</button>

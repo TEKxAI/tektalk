@@ -11,6 +11,8 @@ public:
     winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> Register(winrt::hstring const&, winrt::hstring const&, winrt::hstring const&, winrt::hstring const&, winrt::hstring const&);
     winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> Login(winrt::hstring const&, winrt::hstring const&);
     winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> Verify(winrt::hstring const&, winrt::hstring const&);
+    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> StartDeviceLink();
+    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> PollDeviceLink(winrt::hstring const&, winrt::hstring const&);
     winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonArray> History(winrt::hstring const&, winrt::hstring const&);
     winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> Send(winrt::hstring const&, winrt::hstring const&, winrt::hstring const&, winrt::hstring const&);
     static Tokens ParseTokens(winrt::Windows::Data::Json::JsonObject const&);

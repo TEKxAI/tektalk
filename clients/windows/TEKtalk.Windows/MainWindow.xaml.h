@@ -20,7 +20,7 @@ private:
     void AppendMessage(winrt::hstring const& body,bool mine);
     static Microsoft::UI::Xaml::Media::Brush Brush(wchar_t const* key);
     static void Primary(Microsoft::UI::Xaml::Controls::Button const& button);
-    winrt::Windows::Foundation::IAsyncAction SubmitAuth();winrt::Windows::Foundation::IAsyncAction LoadMessages();winrt::Windows::Foundation::IAsyncAction SendMessage();
+    winrt::Windows::Foundation::IAsyncAction SubmitAuth();winrt::Windows::Foundation::IAsyncAction StartQrLogin();winrt::Windows::Foundation::IAsyncAction LoadMessages();winrt::Windows::Foundation::IAsyncAction SendMessage();
     static Microsoft::UI::Xaml::Controls::TextBlock Text(winrt::hstring const&,double=14,bool=false);
 };
 }

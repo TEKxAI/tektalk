@@ -27,12 +27,12 @@ peer_token=$(printf '%s' "$peer_response" | sed -n 's/.*"access_token":"\([^"]*\
 peer_id=$(printf '%s' "$peer_response" | sed -n 's/.*"user_id":"\([^"]*\)".*/\1/p')
 conversation_id=$(python3 -c 'import uuid; print(uuid.uuid4())')
 client_message_id=$(python3 -c 'import uuid; print(uuid.uuid4())')
-bundle=$(python3 -c 'import json; print(json.dumps({"suite":"TEKTALK_X25519_MLKEM768_AES256GCMSIV_SHA256","x25519_public":[1]*32,"ml_kem_768_public":[2]*1184}))')
+bundle=$(python3 -c 'import json; print(json.dumps({"suite":"TEKTALK_LEVEL3_X25519_MLKEM768_AES256GCMSIV_SHA256","x25519_public":[1]*32,"ml_kem_768_public":[2]*1184}))')
 curl --fail --silent --show-error -H 'content-type: application/json' -H "authorization: Bearer $token" -d "$bundle" "$base_url/v1/secret/devices/register" >/dev/null
 curl --fail --silent --show-error -H 'content-type: application/json' -H "authorization: Bearer $peer_token" -d "$bundle" "$base_url/v1/secret/devices/register" >/dev/null
 policy=$(curl --fail --silent --show-error -H 'content-type: application/json' -H "authorization: Bearer $token" \
   -d "{\"conversation_id\":\"$conversation_id\",\"kind\":\"one_to_one\",\"member_ids\":[\"$peer_id\"]}" "$base_url/v1/secret/conversations/enable")
-printf '%s' "$policy" | grep -q 'TEKTALK_X25519_MLKEM768_AES256GCMSIV_SHA256' || { echo "Secret Chat policy did not require the hybrid suite." >&2; exit 1; }
+printf '%s' "$policy" | grep -q 'TEKTALK_LEVEL3_X25519_MLKEM768_AES256GCMSIV_SHA256' || { echo "Secret Chat policy did not require the hybrid suite." >&2; exit 1; }
 ciphertext=$(python3 -c 'import json; print(json.dumps([7]*32))')
 secret_message=$(curl --fail --silent --show-error -H 'content-type: application/json' -H "authorization: Bearer $token" \
   -d "{\"conversation_id\":\"$conversation_id\",\"client_message_id\":\"$client_message_id\",\"epoch\":1,\"counter\":0,\"nonce\":[1,2,3,4,5,6,7,8,9,10,11,12],\"ciphertext\":$ciphertext}" "$base_url/v1/secret/messages/send")
